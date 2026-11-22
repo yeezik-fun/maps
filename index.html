@@ -941,16 +941,15 @@ function applyMode() {
   set('poi', 'text-color', P.poi); set('poi', 'text-halo-color', P.poiHalo);
   set('place-label', 'text-color', P.place); set('place-label', 'text-halo-color', P.halo);
   set('route-done-line', 'line-color', P.prim);
-  try { if (map.setSky) map.setSky(P.sky); } catch (e) {}
 }
 
 // ================= Mappa =================
 const DEFAULT_START = [9.2040, 45.4855]; // Milano Centrale
 let here = DEFAULT_START.slice(), dest = null, destName = '';
-const NAV_PITCH = 70;
+const NAV_PITCH = 52, NAV_ZOOM = 16.8; // inclinazione di guida: vedi bene la strada davanti, senza orizzonte
 
 const map = new maplibregl.Map({
-  container: 'map', style: STYLE, center: here, zoom: 16.4, pitch: 66, bearing: -20, maxPitch: 82,
+  container: 'map', style: STYLE, center: here, zoom: 16.4, pitch: 52, bearing: -20, maxPitch: 60,
   attributionControl: { compact: true, customAttribution: '© OpenFreeMap · © OpenMapTiles · © OpenStreetMap · Ricerca: Photon · Percorsi: OSRM' }
 });
 
@@ -1265,7 +1264,7 @@ function onPosition(p, b, kmh) {
   const passed = route.coords.slice(0, nav.idx + 1).concat([pointAt(nav.d)]);
   map.getSource('route-done').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: passed.length > 1 ? passed : [p, p] } });
   if (!nav.overview) {
-    const cam = { center: p, bearing: b, zoom: 17, pitch: NAV_PITCH, padding: { top: map.getContainer().clientHeight * 0.4, bottom: 0, left: 0, right: 0 } };
+    const cam = { center: p, bearing: b, zoom: NAV_ZOOM, pitch: NAV_PITCH, padding: { top: map.getContainer().clientHeight * 0.45, bottom: 0, left: 0, right: 0 } };
     if (nav.mode === 'gps') map.easeTo({ ...cam, duration: 900 }); else map.jumpTo(cam);
   }
   if (route.total - nav.d < 15 && !rerouting && pf.off < 35) arrive();
@@ -1494,7 +1493,7 @@ $('arrClose').onclick = () => {
   ['route', 'route-done', 'cams', 'ztl'].forEach(s => map.getSource(s).setData(emptyFC));
   $('guide').classList.add('empty'); $('instr').textContent = 'Dove andiamo?'; $('eta').classList.add('hidden');
   renderAlerts(); renderControls();
-  map.easeTo({ pitch: 66, padding: { top: 0, bottom: 0, left: 0, right: 0 }, duration: 700 });
+  map.easeTo({ pitch: 52, padding: { top: 0, bottom: 0, left: 0, right: 0 }, duration: 700 });
 };
 
 // ================= Impostazioni =================
@@ -1513,7 +1512,7 @@ function renderSettings() {
   });
   document.querySelectorAll('#viewSeg button').forEach(b => {
     b.className = (b.dataset.v === '2d') === (map.getPitch() < 10) ? 'sel' : '';
-    b.onclick = () => { map.easeTo({ pitch: b.dataset.v === '2d' ? 0 : (nav.mode ? NAV_PITCH : 66), duration: 600 }); setTimeout(renderSettings, 650); };
+    b.onclick = () => { map.easeTo({ pitch: b.dataset.v === '2d' ? 0 : NAV_PITCH, duration: 600 }); setTimeout(renderSettings, 650); };
   });
 }
 function setMode(m) { modePref = m; store.set('yz-mode', m); activePalette = null; applyMode(); }
