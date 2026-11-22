@@ -231,7 +231,7 @@
 <div id="side">
   <button class="icon-btn" id="btnSearch" title="Cerca"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg></button>
   <button class="icon-btn" id="btnOverview" title="Panoramica percorso"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"><path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20Z"/><path d="M9 4v13.5M15 6.5V20"/></svg></button>
-  <button class="icon-btn" id="btnMode" title="Giorno / notte / tramonto"></button>
+  <button class="icon-btn" id="btnMode" title="Giorno / notte"></button>
   <button class="icon-btn" id="btnShare" title="Condividi arrivo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>
   <button class="icon-btn" id="btnSettings" title="Impostazioni"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.3"/><circle cx="8" cy="17" r="2.3"/></svg></button>
 </div>
@@ -950,7 +950,7 @@ const PALETTES = {
     sky: { 'sky-color': '#0a0b33', 'horizon-color': '#ff5fb0', 'fog-color': '#3b2a8f', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.75, 'atmosphere-blend': 0 } },
   tramonto: { bg: '#43236f', res: '#4a2777', com: '#532b80', park: '#3a4f63', water: '#2a2a8a', minor: '#b9679f', path: '#9a5a96', sec: '#dc7d9a', prim: '#f0968a', mot: '#ffb07a', rail: '#6f4794', bld: '#8a4fd0', label: '#ffe3f1', halo: '#43236f', poi: '#ffffff', poiHalo: '#3a1d63', place: '#ffd0a0',
     sky: { 'sky-color': '#3b1a72', 'horizon-color': '#ff9a5c', 'fog-color': '#d0628f', 'sky-horizon-blend': 0.7, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.7, 'atmosphere-blend': 0 } },
-  giorno: { bg: '#e8e5f7', res: '#e3dff5', com: '#dcd6f2', park: '#bfe5cf', water: '#a3c8f7', minor: '#ffffff', path: '#d3cdef', sec: '#ffffff', prim: '#ffd9f0', mot: '#ffbde5', rail: '#bab3dc', bld: '#cbc5f2', label: '#3b3570', halo: '#ffffff', poi: '#2a2560', poiHalo: '#ffffff', place: '#5a4fa0',
+  giorno: { bg: '#e8e5f7', res: '#e3dff5', com: '#dcd6f2', park: '#bfe5cf', water: '#a3c8f7', minor: '#ffffff', path: '#d3cdef', sec: '#ffffff', prim: '#ffd9f0', mot: '#ffbde5', rail: '#bab3dc', bld: '#d4cff6', label: '#3b3570', halo: '#ffffff', poi: '#2a2560', poiHalo: '#ffffff', place: '#5a4fa0',
     sky: { 'sky-color': '#7fbcff', 'horizon-color': '#ffe4f3', 'fog-color': '#f1e9ff', 'sky-horizon-blend': 0.5, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.8, 'atmosphere-blend': 0 } }
 };
 const MODE_ICONS = {
@@ -960,14 +960,16 @@ const MODE_ICONS = {
   giorno: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>'
 };
 const MODE_NAMES = { auto: 'Automatica', notte: 'Notte', tramonto: 'Tramonto', giorno: 'Giorno' };
+const MODES = ['auto', 'notte', 'giorno']; // 'tramonto' nascosto per ora
 let modePref = store.get('yz-mode', 'auto'), activePalette = null;
+if (!MODES.includes(modePref)) modePref = 'auto';
 
 function autoMode() {
   const c = map.getCenter(), now = new Date(), s = sunTimes(now, c.lat, c.lng);
   if (isNaN(s.rise) || isNaN(s.set)) return 'notte';
   const t = now.getTime(), H = 36e5;
-  if ((t > s.rise - 0.5 * H && t < s.rise + 0.75 * H) || (t > s.set - 0.75 * H && t < s.set + 0.75 * H)) return 'tramonto';
-  if (t >= s.rise + 0.75 * H && t <= s.set - 0.75 * H) return 'giorno';
+  // (Tramonto per ora nascosto: tra alba e tramonto è giorno, il resto è notte)
+  if (t >= s.rise && t <= s.set) return 'giorno';
   return 'notte';
 }
 function applyMode() {
@@ -987,7 +989,9 @@ function applyMode() {
   set('road-label', 'text-color', P.label); set('road-label', 'text-halo-color', P.halo);
   set('poi', 'text-color', P.poi); set('poi', 'text-halo-color', P.poiHalo);
   set('place-label', 'text-color', P.place); set('place-label', 'text-halo-color', P.halo);
-  set('route-done-line', 'line-color', P.prim);
+  // Luce sugli edifici 3D: di giorno ombre più morbide e chiare
+  try { map.setLight(name === 'giorno' ? { anchor: 'viewport', color: '#ffffff', intensity: 0.28, position: [1.15, 210, 30] } : { anchor: 'viewport', color: '#ffffff', intensity: 0.5, position: [1.15, 210, 30] }); } catch (e) {}
+  set('building-3d', 'fill-extrusion-vertical-gradient', name !== 'giorno');
 }
 
 // ================= Mappa =================
@@ -1175,18 +1179,22 @@ async function reroute(p) {
 }
 
 // Il percorso "si disegna" dall'inizio alla fine
-let drawRaf;
+let drawRaf, drawing = false;
+// Tratto di percorso tra due distanze (serve per l'animazione e per cancellare la parte già fatta)
+function routeSlice(d0, d1) {
+  const pts = [pointAt(d0)];
+  for (let i = 0; i < route.coords.length; i++) if (route.cum[i] > d0 && route.cum[i] < d1) pts.push(route.coords[i]);
+  pts.push(pointAt(d1));
+  return { type: 'Feature', geometry: { type: 'LineString', coordinates: pts } };
+}
 function drawRouteAnimated() {
-  cancelAnimationFrame(drawRaf);
+  cancelAnimationFrame(drawRaf); drawing = true;
   const rt = route, t0 = performance.now(), dur = Math.min(1600, 700 + rt.total / 10);
   const f = t => {
-    if (rt !== route) return;
-    const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3), D = rt.total * e;
-    const pts = [];
-    for (let i = 0; i < rt.coords.length && rt.cum[i] <= D; i++) pts.push(rt.coords[i]);
-    pts.push(pointAt(D));
-    map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: pts.length > 1 ? pts : [pts[0], pts[0]] } });
-    if (k < 1) drawRaf = requestAnimationFrame(f);
+    if (rt !== route) { drawing = false; return; }
+    const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3), from = nav.d;
+    map.getSource('route').setData(routeSlice(from, from + (rt.total - from) * e));
+    if (k < 1) drawRaf = requestAnimationFrame(f); else drawing = false;
   };
   drawRaf = requestAnimationFrame(f);
 }
@@ -1414,8 +1422,8 @@ function onPosition(p, b, kmh) {
     nav.d = pf.d; nav.idx = pf.idx;
   }
   updateLimit(p); updateSpeed(); updatePanels(nav.d); renderAlerts();
-  const passed = route.coords.slice(0, nav.idx + 1).concat([pointAt(nav.d)]);
-  map.getSource('route-done').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: passed.length > 1 ? passed : [p, p] } });
+  // la riga dietro di te sparisce man mano che vai avanti
+  if (!drawing) map.getSource('route').setData(routeSlice(nav.d, route.total));
   if (!nav.overview) {
     const cam = { center: p, bearing: b, zoom: NAV_ZOOM, pitch: NAV_PITCH, padding: { top: map.getContainer().clientHeight * 0.45, bottom: 0, left: 0, right: 0 } };
     if (nav.mode === 'gps') map.easeTo({ ...cam, duration: 900 }); else map.jumpTo(cam);
@@ -1487,7 +1495,7 @@ function stopNav() {
   if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; lastFix = null; }
   nav.mode = null; nav.kmh = 0; nav.overview = false;
   updateSpeed(); renderControls();
-  if (route) { map.getSource('route-done').setData(emptyFC); updatePanels(0); }
+  if (route) { nav.d = 0; nav.idx = 0; map.getSource('route').setData(routeSlice(0, route.total)); updatePanels(0); }
 }
 function arrive() {
   const mins = nav.mode === 'sim' ? Math.round(route.duration / 60) : Math.round((Date.now() - nav.startTime) / 60000);
@@ -1659,7 +1667,7 @@ function renderSettings() {
     po.appendChild(el);
   });
   const ms = $('modeSeg'); ms.innerHTML = '';
-  ['auto', 'notte', 'tramonto', 'giorno'].forEach(m => {
+  MODES.forEach(m => {
     const b = document.createElement('button'); b.textContent = MODE_NAMES[m]; if (m === modePref) b.className = 'sel';
     b.onclick = () => { setMode(m); renderSettings(); }; ms.appendChild(b);
   });
@@ -1672,7 +1680,7 @@ function setMode(m) { modePref = m; store.set('yz-mode', m); activePalette = nul
 $('btnSettings').onclick = () => { renderSettings(); $('settings').classList.remove('hidden'); };
 $('setClose').onclick = () => $('settings').classList.add('hidden');
 $('btnMode').onclick = () => {
-  const order = ['auto', 'notte', 'tramonto', 'giorno'];
+  const order = MODES;
   setMode(order[(order.indexOf(modePref) + 1) % order.length]);
   toast('Aspetto: ' + MODE_NAMES[modePref] + (modePref === 'auto' ? ` (ora ${autoMode()})` : ''));
 };
