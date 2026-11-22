@@ -67,6 +67,9 @@
   .alert.cam .ic { background: #fff; color: #e5222a; }
   .alert.ztl .ic { background: #e5222a; color: #fff; font-size: 11px; font-weight: 900; }
   .alert.info .ic { background: #3a2470; }
+  .alert.sig .ic { background: #1b1e52; }
+  .alert.sig.stop .ic { background: #e5222a; color: #fff; clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); border-radius: 0; }
+  .alert.sig.give_way .ic { background: none; }
   .alert small { display: block; font-weight: 500; color: #c9c8ee; font-size: 13px; }
   @keyframes pop { from { transform: translateY(-6px); opacity: 0; } to { transform: none; opacity: 1; } }
 
@@ -972,6 +975,21 @@ const ICONS = {
   'yz-cam': g => { g.fillStyle = '#e5222a'; g.beginPath(); g.roundRect(14, 22, 30, 20, 4); g.fill(); g.beginPath(); g.moveTo(44, 28); g.lineTo(52, 24); g.lineTo(52, 40); g.lineTo(44, 36); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(26, 32, 5, 0, 7); g.fill(); }
 };
 map.on('styleimagemissing', e => {
+  if (e.id === 'yz-giveway' || e.id === 'yz-crossing') {
+    const c = document.createElement('canvas'); c.width = 48; c.height = 48; const g = c.getContext('2d');
+    if (e.id === 'yz-giveway') {
+      g.lineJoin = 'round';
+      g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(3, 6); g.lineTo(45, 6); g.lineTo(24, 44); g.closePath(); g.fill();
+      g.strokeStyle = '#e5222a'; g.lineWidth = 6; g.beginPath(); g.moveTo(9, 10); g.lineTo(39, 10); g.lineTo(24, 37); g.closePath(); g.stroke();
+    } else {
+      g.fillStyle = '#ffffff'; g.beginPath(); g.roundRect(3, 3, 42, 42, 9); g.fill();
+      g.fillStyle = '#1f6fe5'; g.beginPath(); g.roundRect(6, 6, 36, 36, 7); g.fill();
+      g.fillStyle = '#ffffff'; for (let i = 0; i < 4; i++) g.fillRect(10 + i * 8, 26, 5, 12);
+      g.beginPath(); g.arc(24, 13, 3.5, 0, 7); g.fill(); g.fillRect(22, 16.5, 4, 8);
+    }
+    if (!map.hasImage(e.id)) map.addImage(e.id, g.getImageData(0, 0, 48, 48), { pixelRatio: 2 });
+    return;
+  }
   if (e.id === 'yz-signal' || e.id === 'yz-stop') {
     const c = document.createElement('canvas'); c.width = 48; c.height = 72; const g = c.getContext('2d');
     if (e.id === 'yz-signal') {
@@ -1043,7 +1061,8 @@ function setRoute(data) {
   const coords = data.coords, cum = [0];
   for (let i = 1; i < coords.length; i++) cum.push(cum[i - 1] + dist(coords[i - 1], coords[i]));
   let acc = 0; const steps = data.steps.map(s => { const o = { startDist: acc, step: s }; acc += s.distance; return o; });
-  route = { coords, cum, total: cum[cum.length - 1] || 1, duration: data.duration, steps, maxspeed: data.maxspeed || [], cams: [], ztl: [], ztlEntries: [] };
+  route = { coords, cum, total: cum[cum.length - 1] || 1, duration: data.duration, steps, maxspeed: data.maxspeed || [], cams: [], ztl: [], ztlEntries: [], sigs: [] };
+  matchSignals();
   nav.d = 0; nav.idx = 0;
   map.getSource('route-done').setData(emptyFC);
   map.getSource('cams').setData(emptyFC); map.getSource('ztl').setData(emptyFC);
@@ -1246,6 +1265,13 @@ function renderAlerts() {
     const d = nav.d;
     const cam = route.cams.find(c => c.d > d - 15 && c.d - d < 700);
     if (cam) want.push({ id: 'cam', cls: 'cam', ic: '📷', html: `Autovelox tra ${fmtDist(Math.max(0, cam.d - d))}<small>Limite ${cam.max || limit} km/h</small>` });
+    const sg = (route.sigs || []).find(x => x.d > d + 3 && x.d - d < 200);
+    if (sg) {
+      const L = { signal: ['Semaforo', '<svg viewBox="0 0 16 24" width="13" height="20"><rect x="1" y="1" width="14" height="22" rx="5" fill="#14152e" stroke="#fff" stroke-width="1.5"/><circle cx="8" cy="6.5" r="2.4" fill="#ff3b47"/><circle cx="8" cy="12" r="2.4" fill="#ffc53d"/><circle cx="8" cy="17.5" r="2.4" fill="#3ddc84"/></svg>'],
+        stop: ['Stop', '<span style="font-size:9px;font-weight:900">STOP</span>'],
+        give_way: ['Dare precedenza', '<svg viewBox="0 0 24 22" width="22" height="20"><path d="M1 1h22L12 21Z" fill="#fff"/><path d="M5 3.5h14L12 16Z" fill="none" stroke="#e5222a" stroke-width="2.8" stroke-linejoin="round"/></svg>'] }[sg.k];
+      want.push({ id: 'sig-' + sg.k, cls: 'sig ' + sg.k, ic: L[1], html: `${L[0]} tra ${fmtDist(sg.d - d)}` });
+    }
     const z = route.ztlEntries.find(e => e > d - 5 && e - d < 800);
     if (z !== undefined) want.push({ id: 'ztl', cls: 'ztl', ic: 'ZTL', html: `${z - d < 20 ? 'Stai entrando in una ZTL' : 'ZTL tra ' + fmtDist(z - d)}<small>Controlla di avere il permesso</small>` });
   }
@@ -1572,16 +1598,29 @@ async function loadSignals() {
   const missing = [...new Set(want.map(t => t.join('/')))].filter(k => !sigTiles.has(k)).slice(0, 12);
   if (!missing.length) return;
   sigBusy = true; missing.forEach(k => sigTiles.set(k, 'loading'));
-  const parts = missing.map(k => { const [x, y] = k.split('/').map(Number), b = tileBounds(x, y, Z); return `node["highway"~"^(traffic_signals|stop)$"](${b.s},${b.w},${b.n},${b.e});`; }).join('');
+  const parts = missing.map(k => { const [x, y] = k.split('/').map(Number), b = tileBounds(x, y, Z); const bb = `${b.s},${b.w},${b.n},${b.e}`; return `node["highway"~"^(traffic_signals|stop|give_way)$"](${bb});node["highway"="crossing"](${bb});`; }).join('');
   try {
     const r = await (await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(`[out:json][timeout:20];(${parts});out;`), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })).json();
-    (r.elements || []).forEach(el => sigFeatures.set(el.id, { type: 'Feature', geometry: { type: 'Point', coordinates: [el.lon, el.lat] }, properties: { k: el.tags.highway === 'stop' ? 'stop' : 'signal' } }));
+    (r.elements || []).forEach(el => sigFeatures.set(el.id, { type: 'Feature', geometry: { type: 'Point', coordinates: [el.lon, el.lat] }, properties: { k: el.tags.highway === 'traffic_signals' ? 'signal' : el.tags.highway } }));
     missing.forEach(k => sigTiles.set(k, 'ok'));
     map.getSource('signals').setData({ type: 'FeatureCollection', features: [...sigFeatures.values()] });
+    matchSignals();
   } catch (e) { missing.forEach(k => sigTiles.delete(k)); }
   sigBusy = false;
 }
 setInterval(() => { if (map.isStyleLoaded() && map.getSource('signals')) loadSignals(); }, 1500);
+function matchSignals() {
+  if (!route) return;
+  const out = [];
+  for (const f of sigFeatures.values()) {
+    const k = f.properties.k; if (k === 'crossing') continue;
+    const pr = project(f.geometry.coordinates);
+    if (pr.off < 14) out.push({ d: pr.d, k });
+  }
+  out.sort((a, b) => a.d - b.d);
+  // un incrocio con più semafori conta come uno solo
+  route.sigs = out.filter((x, i) => !i || x.d - out[i - 1].d > 25 || x.k !== out[i - 1].k);
+}
 
 function tick() { $('clock').textContent = fmtTime(new Date()); }
 tick(); setInterval(tick, 10000);
@@ -1604,7 +1643,10 @@ map.on('load', () => {
     paint: { 'line-color': '#7c79bf', 'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 5, 18, 27] } }, before);
   map.addSource('signals', { type: 'geojson', data: emptyFC });
   map.addLayer({ id: 'signals', type: 'symbol', source: 'signals', minzoom: 15,
-    layout: { 'icon-image': ['match', ['get', 'k'], 'stop', 'yz-stop', 'yz-signal'], 'icon-size': ['interpolate', ['linear'], ['zoom'], 15, 0.55, 18, 0.9], 'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-pitch-alignment': 'viewport' } });
+    filter: ['!=', ['get', 'k'], 'crossing'],
+    layout: { 'icon-image': ['match', ['get', 'k'], 'stop', 'yz-stop', 'give_way', 'yz-giveway', 'yz-signal'], 'icon-size': ['interpolate', ['linear'], ['zoom'], 15, 0.55, 18, 0.9], 'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-pitch-alignment': 'viewport' } });
+  map.addLayer({ id: 'crossings', type: 'symbol', source: 'signals', minzoom: 16.3, filter: ['==', ['get', 'k'], 'crossing'],
+    layout: { 'icon-image': 'yz-crossing', 'icon-size': ['interpolate', ['linear'], ['zoom'], 16.3, 0.4, 18, 0.65], 'icon-anchor': 'bottom', 'icon-allow-overlap': false, 'icon-padding': 4, 'icon-pitch-alignment': 'viewport' } }, 'signals');
   map.addLayer({ id: 'cams', type: 'symbol', source: 'cams', layout: { 'icon-image': 'yz-cam', 'icon-size': 0.55, 'icon-anchor': 'bottom', 'icon-allow-overlap': true } });
   applyMode();
 
