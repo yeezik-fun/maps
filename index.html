@@ -972,6 +972,21 @@ const ICONS = {
   'yz-cam': g => { g.fillStyle = '#e5222a'; g.beginPath(); g.roundRect(14, 22, 30, 20, 4); g.fill(); g.beginPath(); g.moveTo(44, 28); g.lineTo(52, 24); g.lineTo(52, 40); g.lineTo(44, 36); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(26, 32, 5, 0, 7); g.fill(); }
 };
 map.on('styleimagemissing', e => {
+  if (e.id === 'yz-signal' || e.id === 'yz-stop') {
+    const c = document.createElement('canvas'); c.width = 48; c.height = 72; const g = c.getContext('2d');
+    if (e.id === 'yz-signal') {
+      g.fillStyle = '#14152e'; g.strokeStyle = '#ffffff'; g.lineWidth = 3;
+      g.beginPath(); g.roundRect(8, 3, 32, 66, 12); g.fill(); g.stroke();
+      [['#ff3b47', 18], ['#ffc53d', 36], ['#3ddc84', 54]].forEach(([col, y]) => { g.fillStyle = col; g.beginPath(); g.arc(24, y, 7, 0, 7); g.fill(); });
+    } else {
+      c.height = 48; g.translate(24, 24); g.rotate(Math.PI / 8);
+      const oct = r => { g.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; g.lineTo(r * Math.cos(a), r * Math.sin(a)); } g.closePath(); };
+      g.fillStyle = '#ffffff'; oct(22); g.fill(); g.fillStyle = '#e5222a'; oct(19); g.fill();
+      g.rotate(-Math.PI / 8); g.fillStyle = '#fff'; g.font = 'bold 12px -apple-system, Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('STOP', 0, 1);
+    }
+    if (!map.hasImage(e.id)) map.addImage(e.id, g.getImageData(0, 0, c.width, c.height), { pixelRatio: 2 });
+    return;
+  }
   if (!map.hasImage(e.id)) map.addImage(e.id, makeIcon(ICONS[e.id] || ICONS['yz-pin']), { pixelRatio: 2 });
 });
 
@@ -1536,6 +1551,38 @@ map.on('click', async e => {
   if (dest === p) { destName = n; }
 });
 
+// ================= Semafori e stop (da OpenStreetMap) =================
+const sigTiles = new Map(), sigFeatures = new Map(); let sigBusy = false;
+function tileOf(lng, lat, z) {
+  const n = 2 ** z, x = Math.floor((lng + 180) / 360 * n);
+  const y = Math.floor((1 - Math.log(Math.tan(rad(lat)) + 1 / Math.cos(rad(lat))) / Math.PI) / 2 * n);
+  return [x, y];
+}
+function tileBounds(x, y, z) {
+  const n = 2 ** z, lng = v => v / n * 360 - 180, lat = v => deg(Math.atan(Math.sinh(Math.PI * (1 - 2 * v / n))));
+  return { w: lng(x), e: lng(x + 1), n: lat(y), s: lat(y + 1) };
+}
+async function loadSignals() {
+  if (sigBusy || map.getZoom() < 14.5) return;
+  const Z = 15, c = map.getCenter(), [cx, cy] = tileOf(c.lng, c.lat, Z);
+  // riquadri attorno al centro (e un po' più avanti quando sei in guida)
+  const want = [];
+  for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) want.push([cx + dx, cy + dy]);
+  if (route) { const ahead = pointAt(Math.min(route.total, nav.d + 500)); const [ax, ay] = tileOf(ahead[0], ahead[1], Z); for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) want.push([ax + dx, ay + dy]); }
+  const missing = [...new Set(want.map(t => t.join('/')))].filter(k => !sigTiles.has(k)).slice(0, 12);
+  if (!missing.length) return;
+  sigBusy = true; missing.forEach(k => sigTiles.set(k, 'loading'));
+  const parts = missing.map(k => { const [x, y] = k.split('/').map(Number), b = tileBounds(x, y, Z); return `node["highway"~"^(traffic_signals|stop)$"](${b.s},${b.w},${b.n},${b.e});`; }).join('');
+  try {
+    const r = await (await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(`[out:json][timeout:20];(${parts});out;`), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })).json();
+    (r.elements || []).forEach(el => sigFeatures.set(el.id, { type: 'Feature', geometry: { type: 'Point', coordinates: [el.lon, el.lat] }, properties: { k: el.tags.highway === 'stop' ? 'stop' : 'signal' } }));
+    missing.forEach(k => sigTiles.set(k, 'ok'));
+    map.getSource('signals').setData({ type: 'FeatureCollection', features: [...sigFeatures.values()] });
+  } catch (e) { missing.forEach(k => sigTiles.delete(k)); }
+  sigBusy = false;
+}
+setInterval(() => { if (map.isStyleLoaded() && map.getSource('signals')) loadSignals(); }, 1500);
+
 function tick() { $('clock').textContent = fmtTime(new Date()); }
 tick(); setInterval(tick, 10000);
 setInterval(() => { if (modePref === 'auto') applyMode(); }, 60000);
@@ -1555,6 +1602,9 @@ map.on('load', () => {
     paint: { 'line-color': '#ffc6f0', 'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 2.7, 18, 15.6] } }, before);
   map.addLayer({ id: 'route-done-line', type: 'line', source: 'route-done', layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: { 'line-color': '#7c79bf', 'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 5, 18, 27] } }, before);
+  map.addSource('signals', { type: 'geojson', data: emptyFC });
+  map.addLayer({ id: 'signals', type: 'symbol', source: 'signals', minzoom: 15,
+    layout: { 'icon-image': ['match', ['get', 'k'], 'stop', 'yz-stop', 'yz-signal'], 'icon-size': ['interpolate', ['linear'], ['zoom'], 15, 0.55, 18, 0.9], 'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-pitch-alignment': 'viewport' } });
   map.addLayer({ id: 'cams', type: 'symbol', source: 'cams', layout: { 'icon-image': 'yz-cam', 'icon-size': 0.55, 'icon-anchor': 'bottom', 'icon-allow-overlap': true } });
   applyMode();
 
