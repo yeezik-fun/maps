@@ -815,7 +815,7 @@ map.on('load', () => {
   // Il percorso sta sotto gli edifici 3D? No: lo mettiamo sopra le strade ma sotto le etichette
   const before = 'building-3d';
   map.addLayer({ id: 'route-glow', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#ff5fd2', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 8, 18, 34], 'line-blur': 10, 'line-opacity': 0.55 } }, before);
+    paint: { 'line-color': '#ffd3f3', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 5.5, 18, 21], 'line-opacity': 0.9 } }, before);
   map.addLayer({ id: 'route-line', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: { 'line-color': '#ff8ee0', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 4, 18, 18] } }, before);
   map.addLayer({ id: 'route-core', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' },
