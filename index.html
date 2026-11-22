@@ -48,16 +48,48 @@
   .icon-btn.on { background: #3a2470; border-color: var(--pink); }
 
   /* Riquadro manovre */
-  #guide { top: 20px; left: calc(var(--dock) + 20px); width: min(420px, calc(100% - var(--dock) - 170px)); padding: 20px 24px; z-index: 3; }
-  #guide .row { display: flex; align-items: center; gap: 18px; }
-  #arrow { font-size: 54px; line-height: 1; font-weight: 700; width: 60px; text-align: center; }
-  #dist { font-size: 36px; font-weight: 700; }
-  #instr { margin-top: 10px; font-size: 24px; font-weight: 700; line-height: 1.25; }
-  #then { margin: 14px -24px -20px; padding: 10px 24px; border-top: 1px solid rgba(255,255,255,.12); font-size: 16px; color: #d9d7ff; display: flex; gap: 10px; align-items: center; background: rgba(255,255,255,.04); border-radius: 0 0 22px 22px; }
-  #then b { font-size: 22px; }
-  #guide.empty #arrow, #guide.empty #dist, #guide.empty #then { display: none; }
-  #guide.empty #instr { margin: 0; }
-  #searchHere { margin-top: 12px; }
+  #guide { top: 20px; left: calc(var(--dock) + 20px); width: min(430px, calc(100% - var(--dock) - 170px)); padding: 0; z-index: 3; overflow: hidden; border: 1.5px solid rgba(255,142,224,.18); transition: border-color .3s, box-shadow .3s; }
+  #gMain { padding: 18px 22px 16px; }
+  .g-top { display: flex; align-items: center; gap: 16px; }
+  .g-arrow { width: 74px; height: 74px; flex: none; border-radius: 20px; background: linear-gradient(145deg, #2a2466, #1a1a4a); display: grid; place-items: center; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); transition: background .4s, transform .4s; }
+  .g-arrow svg { width: 60px; height: 60px; overflow: visible; }
+  .g-dist { min-width: 0; }
+  #distLine { display: flex; align-items: baseline; gap: 5px; font-weight: 800; line-height: 1; }
+  #distNum { font-size: 44px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  #distUnit { font-size: 22px; color: #e4d6ff; font-weight: 700; }
+  #verb { margin-top: 6px; font-size: 16px; color: #cfc9ff; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #instr { margin-top: 12px; font-size: 25px; font-weight: 800; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  #lanes { display: flex; gap: 5px; margin-top: 12px; }
+  #lanes:empty { display: none; }
+  .lane { width: 30px; height: 34px; border-radius: 8px; background: rgba(255,255,255,.06); display: grid; place-items: center; }
+  .lane svg { width: 22px; height: 22px; }
+  .lane.off { opacity: .3; }
+  .lane.on { background: rgba(255,142,224,.22); box-shadow: inset 0 0 0 1.5px rgba(255,142,224,.7); }
+  #gProg { height: 4px; background: rgba(255,255,255,.07); }
+  #gProg i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ff8ee0, #c59bff); box-shadow: 0 0 10px rgba(255,142,224,.8); transition: width .25s linear; }
+  #then { padding: 10px 22px; font-size: 16px; color: #d9d7ff; display: flex; gap: 10px; align-items: center; background: rgba(255,255,255,.04); }
+  #then svg { width: 22px; height: 22px; flex: none; }
+  #then .tt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+  #guide.empty .g-top, #guide.empty #lanes, #guide.empty #gProg, #guide.empty #then,
+  #guide.calc .g-top, #guide.calc #lanes, #guide.calc #gProg, #guide.calc #then { display: none !important; }
+  #guide.empty #instr, #guide.calc #instr { margin: 0; font-size: 22px; }
+  #guide.calc #instr { animation: breathe 1.2s ease-in-out infinite alternate; }
+  @keyframes breathe { from { opacity: .45; } to { opacity: 1; } }
+  #guide.empty #gMain { padding-bottom: 18px; }
+  #searchHere { margin: 0 22px 18px; }
+  /* Manovra imminente: il riquadro si accende di rosa */
+  #guide.now { border-color: var(--pink); box-shadow: 0 0 0 1px var(--pink), 0 0 34px rgba(255,142,224,.45), 0 8px 30px rgba(0,0,0,.35); }
+  #guide.now .g-arrow { background: linear-gradient(145deg, #ff8ee0, #9b5cff); transform: scale(1.06); animation: nowPulse 0.9s ease-in-out infinite alternate; }
+  @keyframes nowPulse { from { box-shadow: 0 0 0 0 rgba(255,142,224,.6); } to { box-shadow: 0 0 0 8px rgba(255,142,224,0); } }
+  /* Disegno animato della freccia */
+  .mv { stroke-dasharray: 1; stroke-dashoffset: 0; }
+  .g-arrow.draw .mv { animation: drawMv .55s cubic-bezier(.4,0,.2,1) both; }
+  .g-arrow.draw .mh { animation: headIn .25s .42s ease-out both; }
+  .g-arrow.draw .gh { animation: ghostIn .4s ease-out both; }
+  @keyframes drawMv { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+  @keyframes headIn { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: none; } }
+  @keyframes ghostIn { from { opacity: 0; } to { opacity: 1; } }
+  .mh { transform-box: fill-box; transform-origin: center; }
   #guide:not(.empty) #searchHere { display: none; }
 
   /* Avvisi (autovelox, ZTL, ricalcolo) */
@@ -147,11 +179,16 @@
     #dock { gap: 8px; } #status { display: none; }
     #speed { transform: scale(.75); transform-origin: top right; top: 12px; right: 12px; }
     #side { top: 90px; right: 12px; gap: 8px; } .icon-btn { width: 42px; height: 42px; } .icon-btn svg { width: 20px; height: 20px; }
-    #guide { width: min(330px, calc(100% - var(--dock) - 130px)); padding: 12px 16px; top: 12px; left: calc(var(--dock) + 12px); }
-    #then { margin: 10px -16px -12px; padding: 8px 16px; font-size: 14px; }
+    #guide { width: min(340px, calc(100% - var(--dock) - 130px)); top: 12px; left: calc(var(--dock) + 12px); border-radius: 18px; }
+    #gMain { padding: 12px 14px 10px; } .g-top { gap: 12px; }
+    .g-arrow { width: 54px; height: 54px; border-radius: 15px; } .g-arrow svg { width: 44px; height: 44px; }
+    #distNum { font-size: 32px; } #distUnit { font-size: 17px; } #verb { font-size: 13px; margin-top: 4px; }
+    #instr { font-size: 18px; margin-top: 8px; } #guide.empty #instr, #guide.calc #instr { font-size: 17px; }
+    #lanes { margin-top: 8px; } .lane { width: 24px; height: 28px; } .lane svg { width: 18px; height: 18px; }
+    #then { padding: 7px 14px; font-size: 13px; } #then svg { width: 18px; height: 18px; }
+    #searchHere { margin: 0 14px 12px; }
     #alerts { left: calc(var(--dock) + 12px); width: min(330px, calc(100% - var(--dock) - 130px)); }
     .alert { font-size: 14px; padding: 8px 12px; } .alert .ic { width: 28px; height: 28px; }
-    #dist { font-size: 26px; } #instr { font-size: 17px; margin-top: 6px; } #arrow { font-size: 38px; width: 44px; }
     #eta { bottom: 12px; left: calc(var(--dock) + 12px); padding: 10px 6px; }
     #eta b { font-size: 18px; } #eta div { padding: 0 12px; } #eta span { font-size: 13px; }
     #controls { right: 12px; bottom: 12px; } button { padding: 10px 14px; font-size: 14px; }
@@ -200,9 +237,16 @@
 </div>
 
 <div id="guide" class="panel empty">
-  <div class="row"><div id="arrow">↑</div><div id="dist">—</div></div>
-  <div id="instr">Dove andiamo?</div>
-  <div id="then" class="hidden"><span>Poi</span><b id="thenArrow">→</b><span id="thenText"></span></div>
+  <div id="gMain">
+    <div class="g-top">
+      <div id="arrow" class="g-arrow"></div>
+      <div class="g-dist"><div id="distLine"><span id="distNum">—</span><span id="distUnit"></span></div><div id="verb"></div></div>
+    </div>
+    <div id="instr">Dove andiamo?</div>
+    <div id="lanes"></div>
+  </div>
+  <div id="gProg"><i></i></div>
+  <div id="then" class="hidden"><span>Poi</span><span id="thenArrow"></span><span class="tt" id="thenText"></span></div>
   <button id="searchHere" class="primary">Cerca una destinazione</button>
 </div>
 <div id="alerts"></div>
@@ -1025,17 +1069,48 @@ destEl.style.cssText = 'width:18px;height:18px;border-radius:50%;background:#ff8
 const destMarker = new maplibregl.Marker({ element: destEl });
 
 // ================= Istruzioni =================
-const ARROWS = { 'left': '←', 'right': '→', 'slight left': '↖', 'slight right': '↗', 'sharp left': '↙', 'sharp right': '↘', 'straight': '↑', 'uturn': '↶' };
+// Icone delle manovre (SVG 48×48): linea che si disegna + punta + strada "fantasma" in trasparenza
+const SHAPES = {
+  'straight':     { p: 'M24 44V13', h: [24, 9, -90] },
+  'right':        { p: 'M19 44V27Q19 18 28 18H33', h: [37, 18, 0], g: 'M19 27V5' },
+  'left':         { p: 'M29 44V27Q29 18 20 18H15', h: [11, 18, 180], g: 'M29 27V5' },
+  'slight right': { p: 'M20 44V30L31 17', h: [33.6, 13.9, -50], g: 'M20 30V5' },
+  'slight left':  { p: 'M28 44V30L17 17', h: [14.4, 13.9, -130], g: 'M28 30V5' },
+  'sharp right':  { p: 'M18 44V15L31 28', h: [33.8, 30.8, 45], g: 'M18 15V4' },
+  'sharp left':   { p: 'M30 44V15L17 28', h: [14.2, 30.8, 135], g: 'M30 15V4' },
+  'uturn':        { p: 'M30 44V18Q30 8 22 8Q14 8 14 18V27', h: [14, 31, 90] }
+};
+const HEAD = (x, y, a, fill = '#fff') => `<g transform="translate(${x} ${y}) rotate(${a})"><path class="mh" d="M8.5 0-4.5-8.2-4.5 8.2Z" fill="${fill}" stroke="${fill}" stroke-width="2" stroke-linejoin="round"/></g>`;
+const SW = 5.5;
+function shapeSVG(mod, { ghost = true, sw = SW } = {}) {
+  const sh = SHAPES[mod] || SHAPES.straight;
+  return `<svg viewBox="0 0 48 48" fill="none" stroke-linecap="round" stroke-linejoin="round">` +
+    (ghost && sh.g ? `<path class="gh" d="${sh.g}" stroke="rgba(255,255,255,.28)" stroke-width="${sw}"/>` : '') +
+    `<path class="mv" pathLength="1" d="${sh.p}" stroke="#fff" stroke-width="${sw}"/>` + HEAD(...sh.h) + `</svg>`;
+}
+function roundaboutSVG(exit) {
+  // In Italia le rotonde si percorrono in senso antiorario: si entra dal basso e si gira verso destra
+  const cx = 24, cy = 23, r = 8, th = Math.max(-225, 90 - 90 * (exit || 1)), t = rad(th);
+  const P = k => [(cx + k * Math.cos(t)).toFixed(2), (cy + k * Math.sin(t)).toFixed(2)];
+  const [ex, ey] = P(r), [ox, oy] = P(12), [hx, hy] = P(15);
+  const large = (90 - th) > 180 ? 1 : 0;
+  return `<svg viewBox="0 0 48 48" fill="none" stroke-linecap="round" stroke-linejoin="round">` +
+    `<circle class="gh" cx="${cx}" cy="${cy}" r="${r}" stroke="rgba(255,255,255,.3)" stroke-width="3.5"/>` +
+    `<path class="mv" pathLength="1" d="M24 45V${cy + r}A${r} ${r} 0 ${large} 0 ${ex} ${ey}L${ox} ${oy}" stroke="#fff" stroke-width="5"/>` +
+    HEAD(hx, hy, th) +
+    `<text class="gh" x="${cx}" y="${cy + 3}" text-anchor="middle" font-size="8.5" font-weight="800" fill="#fff" stroke="none" font-family="-apple-system,Arial">${exit || 1}</text></svg>`;
+}
+const FLAG_SVG = `<svg viewBox="0 0 48 48" fill="none" stroke-linecap="round" stroke-linejoin="round"><path class="mv" pathLength="1" d="M15 44V7" stroke="#fff" stroke-width="5"/><path class="mh" d="M17 8h18l-4.5 7 4.5 7H17Z" fill="#ff8ee0" stroke="#fff" stroke-width="2.5"/></svg>`;
+
 const TURN_IT = { 'left': 'Svolta a sinistra', 'right': 'Svolta a destra', 'slight left': 'Tieni la sinistra', 'slight right': 'Tieni la destra', 'sharp left': 'Svolta decisamente a sinistra', 'sharp right': 'Svolta decisamente a destra', 'straight': 'Prosegui dritto', 'uturn': 'Fai inversione' };
 function describe(step) {
-  const m = step.maneuver, road = step.name ? `, ${step.name}` : '';
-  if (m.type === 'arrive') return { arrow: '⚑', text: 'Arrivo a destinazione', short: 'arrivo' };
-  if (m.type === 'roundabout' || m.type === 'rotary' || m.type === 'roundabout turn' || m.type === 'exit roundabout')
-    return { arrow: '⟳', text: `Alla rotonda prendi la ${m.exit || 1}ª uscita${road}`, short: `${m.exit || 1}ª uscita${road}` };
-  if (m.type === 'depart') return { arrow: '↑', text: `Parti${road ? ' su' + road.slice(1) : ''}`, short: 'parti' };
-  const mod = m.modifier || 'straight';
-  const t = TURN_IT[mod] || 'Prosegui';
-  return { arrow: ARROWS[mod] || '↑', text: t + road, short: (step.name || t.toLowerCase()) };
+  const m = step.maneuver, name = step.name || '';
+  let verb, svg;
+  if (m.type === 'arrive') { verb = 'Arrivo'; svg = FLAG_SVG; return { verb, street: destName || 'Destinazione', svg, short: 'arrivo', mod: 'straight' }; }
+  if (/roundabout|rotary/.test(m.type)) { verb = `Alla rotonda, ${m.exit || 1}ª uscita`; svg = roundaboutSVG(m.exit); return { verb, street: name || verb, svg, short: `rotonda, ${m.exit || 1}ª uscita`, mod: 'straight', round: m.exit || 1 }; }
+  const mod = m.type === 'depart' ? 'straight' : (m.modifier || 'straight');
+  verb = m.type === 'depart' ? 'Parti' : m.type === 'merge' ? 'Immettiti' : (m.type === 'on ramp' ? 'Prendi la rampa' : m.type === 'off ramp' ? 'Prendi l\'uscita' : (TURN_IT[mod] || 'Prosegui'));
+  return { verb, street: name || verb, svg: shapeSVG(mod), short: name || verb.toLowerCase(), mod };
 }
 function fmtDist(m) { return m >= 1000 ? (m / 1000).toFixed(1).replace('.', ',') + ' km' : (Math.round(m / 10) * 10) + ' m'; }
 const fmtTime = d => d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
@@ -1061,13 +1136,13 @@ function setRoute(data) {
   const coords = data.coords, cum = [0];
   for (let i = 1; i < coords.length; i++) cum.push(cum[i - 1] + dist(coords[i - 1], coords[i]));
   let acc = 0; const steps = data.steps.map(s => { const o = { startDist: acc, step: s }; acc += s.distance; return o; });
-  route = { coords, cum, total: cum[cum.length - 1] || 1, duration: data.duration, steps, maxspeed: data.maxspeed || [], cams: [], ztl: [], ztlEntries: [], sigs: [] };
+  route = { coords, cum, total: cum[cum.length - 1] || 1, duration: data.duration, steps, maxspeed: data.maxspeed || [], cams: [], ztl: [], ztlEntries: [], sigs: [], seq: ++routeSeq };
   matchSignals();
   nav.d = 0; nav.idx = 0;
   map.getSource('route-done').setData(emptyFC);
   map.getSource('cams').setData(emptyFC); map.getSource('ztl').setData(emptyFC);
   if (coords.length > 1) puck.setRotation(bearing(coords[0], coords[1]));
-  $('guide').classList.remove('empty'); $('eta').classList.remove('hidden');
+  $('guide').classList.remove('empty', 'calc'); $('eta').classList.remove('hidden'); stepKey = null;
   drawRouteAnimated();
   updatePanels(0);
   renderControls();
@@ -1077,14 +1152,14 @@ function setRoute(data) {
 async function planTo(to, name) {
   dest = to; destName = name || destName || 'Destinazione';
   destMarker.setLngLat(dest).addTo(map);
-  $('guide').classList.remove('empty');
+  $('guide').classList.remove('empty'); $('guide').classList.add('calc');
   $('instr').textContent = 'Calcolo del percorso…';
   try {
     setRoute(await fetchRoute(here, dest));
     if (!nav.mode) overviewRoute(false);
   } catch (e) {
     route = null; destMarker.remove(); renderControls();
-    $('guide').classList.add('empty'); $('eta').classList.add('hidden');
+    $('guide').classList.remove('calc'); $('guide').classList.add('empty'); $('eta').classList.add('hidden');
     $('instr').textContent = 'Percorso non trovato, riprova'; toast('Non riesco a calcolare il percorso');
   }
 }
@@ -1236,21 +1311,58 @@ function updateSpeed() {
   $('overGlow').classList.toggle('on', !!over);
 }
 
+let stepKey = null, swapping = false, routeSeq = 0;
+function fillStep(next, after) {
+  const info = describe(next.step), arrow = $('arrow');
+  arrow.innerHTML = info.svg;
+  arrow.classList.remove('draw'); void arrow.offsetWidth; arrow.classList.add('draw');
+  $('verb').textContent = info.street === info.verb ? '' : info.verb;
+  $('instr').textContent = info.street;
+  // Corsie (quando OpenStreetMap le conosce)
+  const lanes = ((next.step.intersections || [])[0] || {}).lanes || [];
+  $('lanes').innerHTML = lanes.length >= 2 ? lanes.map(l => {
+    const ind = (l.indications || ['straight']).find(x => SHAPES[x]) || 'straight';
+    return `<div class="lane ${l.valid ? 'on' : 'off'}">${shapeSVG(ind, { ghost: false, sw: 6 })}</div>`;
+  }).join('') : '';
+  // Manovra successiva, solo se arriva subito dopo
+  if (after && after.startDist - next.startDist < 400 && after.step.maneuver.type !== 'arrive') {
+    const a = describe(after.step);
+    $('thenArrow').innerHTML = a.round ? roundaboutSVG(a.round) : shapeSVG(a.mod, { ghost: false, sw: 6 });
+    $('thenText').textContent = a.short;
+    $('then').classList.remove('hidden');
+    $('then').animate([{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: 'ease-out' });
+  } else $('then').classList.add('hidden');
+}
+function swapStep(next, after, animate) {
+  const main = $('gMain');
+  if (!animate || swapping || !main.animate) { fillStep(next, after); return; }
+  swapping = true;
+  main.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-16px)' }], { duration: 170, easing: 'ease-in', fill: 'forwards' }).finished.then(() => {
+    fillStep(next, after);
+    main.animate([{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'cubic-bezier(.2,.9,.3,1.2)', fill: 'forwards' }).finished.then(() => { swapping = false; });
+  });
+}
+function setDistance(m) {
+  let num, unit;
+  if (m < 15) { num = 'Ora'; unit = ''; }
+  else if (m < 1000) { num = String(m < 100 ? Math.round(m / 5) * 5 : Math.round(m / 10) * 10); unit = 'm'; }
+  else { num = (m / 1000).toFixed(m < 10000 ? 1 : 0).replace('.', ','); unit = 'km'; }
+  if ($('distNum').textContent !== num) $('distNum').textContent = num;
+  $('distUnit').textContent = unit;
+}
 function updatePanels(d) {
   if (!route) return;
   const i = route.steps.findIndex(s => s.startDist > d + 1);
-  const next = i >= 0 ? route.steps[i] : route.steps[route.steps.length - 1];
-  const info = describe(next.step);
-  $('arrow').textContent = info.arrow;
-  $('dist').textContent = fmtDist(Math.max(0, next.startDist - d));
-  $('instr').textContent = info.text;
-  // Manovra successiva: solo se arriva subito dopo
-  const after = i >= 0 ? route.steps[i + 1] : null;
-  if (after && after.startDist - next.startDist < 400 && after.step.maneuver.type !== 'arrive') {
-    const a = describe(after.step);
-    $('thenArrow').textContent = a.arrow; $('thenText').textContent = a.short;
-    $('then').classList.remove('hidden');
-  } else $('then').classList.add('hidden');
+  const idx = i >= 0 ? i : route.steps.length - 1;
+  const next = route.steps[idx], after = route.steps[idx + 1] || null;
+  const key = route.seq + ':' + idx;
+  if (key !== stepKey) { const first = !stepKey || !stepKey.startsWith(route.seq + ':'); stepKey = key; swapStep(next, after, !first); }
+  const toMan = Math.max(0, next.startDist - d);
+  setDistance(toMan);
+  const prevStart = idx > 0 ? route.steps[idx - 1].startDist : 0;
+  const win = Math.min(500, Math.max(50, next.startDist - prevStart));
+  $('gProg').firstElementChild.style.width = (Math.max(0, Math.min(1, 1 - toMan / win)) * 100).toFixed(1) + '%';
+  $('guide').classList.toggle('now', !!nav.mode && toMan < 60 && next.step.maneuver.type !== 'depart');
   const remaining = Math.max(0, route.total - d);
   const secs = route.duration * (remaining / route.total);
   $('etaTime').textContent = fmtTime(new Date(Date.now() + secs * 1000));
@@ -1532,7 +1644,7 @@ $('arrClose').onclick = () => {
   $('arrive').classList.add('hidden');
   route = null; dest = null; destMarker.remove();
   ['route', 'route-done', 'cams', 'ztl'].forEach(s => map.getSource(s).setData(emptyFC));
-  $('guide').classList.add('empty'); $('instr').textContent = 'Dove andiamo?'; $('eta').classList.add('hidden');
+  $('guide').classList.remove('now', 'calc'); $('guide').classList.add('empty'); $('instr').textContent = 'Dove andiamo?'; stepKey = null; $('eta').classList.add('hidden');
   renderAlerts(); renderControls();
   map.easeTo({ pitch: 52, padding: { top: 0, bottom: 0, left: 0, right: 0 }, duration: 700 });
 };
