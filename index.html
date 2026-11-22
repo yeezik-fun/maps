@@ -49,7 +49,9 @@
   button { background: rgba(12,13,40,.94); color: #fff; border: 1px solid #ff8ee0; border-radius: 999px; padding: 12px 18px; font-size: 15px; font-weight: 600; cursor: pointer; }
   button:hover { background: #2a1e5a; }
   #hint { position: absolute; top: 130px; right: 20px; max-width: 260px; font-size: 13px; color: #c9c8ee; padding: 12px 16px; border-radius: 14px; }
-  .puck { width: 0; height: 0; border-left: 13px solid transparent; border-right: 13px solid transparent; border-bottom: 26px solid #fff; filter: drop-shadow(0 0 6px rgba(255,142,224,.9)); }
+  /* Posizione: dischetto chiaro appoggiato sulla strada con piccolo triangolo bianco */
+  .puck { width: 30px; height: 30px; border-radius: 50%; background: rgba(205, 203, 235, 0.9); border: 1.5px solid rgba(255,255,255,.9); box-shadow: 0 2px 8px rgba(0,0,0,.35); display: grid; place-items: center; }
+  .puck::after { content: ''; width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 11px solid #fff; margin-top: -2px; filter: drop-shadow(0 0 1.5px rgba(40,40,90,.8)); }
   .maplibregl-ctrl-attrib { background: rgba(12,13,40,.7) !important; color: #aaa; }
   .maplibregl-ctrl-attrib a { color: #ccc; }
   @media (max-width: 600px), (max-height: 500px) {
@@ -784,6 +786,7 @@ function setRouteData(coords, steps, duration) {
   let acc = 0; const st = steps.map(s => { const o = { startDist: acc, step: s }; acc += s.distance; return o; });
   route = { coords, cum, total: cum[cum.length - 1], duration, steps: st };
   map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
+  if (coords.length > 1) puck.setRotation(bearing(coords[0], coords[1]));
   updatePanels(0);
 }
 async function loadRoute() {
@@ -854,7 +857,7 @@ function frame(t) {
   travelled = Math.min(route.total, travelled + (kmh / 3.6) * PLAYBACK * dt);
   const p = pointAt(travelled), ahead = pointAt(Math.min(route.total, travelled + 40));
   const b = travelled < route.total ? bearing(p, ahead) : map.getBearing();
-  puck.setLngLat(p).setRotation(0);
+  puck.setLngLat(p).setRotation(b);
   map.jumpTo({ center: p, bearing: b });
   // Traccia già percorsa diventa più tenue
   const passed = route.coords.filter((_, i) => route.cum[i] <= travelled).concat([p]);
@@ -869,7 +872,8 @@ driveBtn.onclick = () => {
   if (driving) { driving = false; kmh = 0; updateSpeed(); driveBtn.textContent = '▶ Riprendi'; return; }
   if (travelled >= route.total) travelled = 0;
   driving = true; last = 0; driveBtn.textContent = '❚❚ Pausa';
-  map.easeTo({ pitch: 62, zoom: 17, duration: 600 });
+  // Come nei navigatori: la tua posizione sta in basso, vedi più strada davanti
+  map.easeTo({ pitch: 62, zoom: 17, padding: { top: map.getContainer().clientHeight * 0.4 }, duration: 600 });
   requestAnimationFrame(frame);
 };
 let is3D = true;
@@ -900,13 +904,12 @@ map.on('load', () => {
   // Il percorso sta sotto gli edifici 3D? No: lo mettiamo sopra le strade ma sotto le etichette
   const before = 'building-3d';
   map.addLayer({ id: 'route-glow', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#ffd3f3', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 5.5, 18, 21], 'line-opacity': 0.9 } }, before);
+    paint: { 'line-color': '#f9c8f4', 'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 6, 18, 30] } }, before);
   map.addLayer({ id: 'route-line', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#ff8ee0', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 4, 18, 18] } }, before);
-  map.addLayer({ id: 'route-core', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#ffc6f0', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1, 18, 6] } }, before);
+    paint: { 'line-color': '#ec8fe4', 'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 4.5, 18, 26] } }, before);
+  // Il tratto già percorso sparisce: torna del colore della strada
   map.addLayer({ id: 'route-done-line', type: 'line', source: 'route-done', layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#7b74b8', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 4, 18, 18] } }, before);
+    paint: { 'line-color': '#7c79bf', 'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 6.5, 18, 31] } }, before);
   loadRoute();
 });
 </script>
