@@ -895,6 +895,7 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 };
+const setText = (id, v) => { const el = $(id); if (el.textContent !== String(v)) el.textContent = v; };
 let toastT;
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add('hidden'), 2600); }
 
@@ -1145,7 +1146,9 @@ function setRoute(data) {
   nav.d = 0; nav.idx = 0;
   map.getSource('route-done').setData(emptyFC);
   map.getSource('cams').setData(emptyFC); map.getSource('ztl').setData(emptyFC);
-  if (coords.length > 1) puck.setRotation(bearing(coords[0], coords[1]));
+  winKey = ''; setRouteWindow(0, 1e-5);
+  map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
+  if (coords.length > 1) { camB = bearing(coords[0], coords[1]); puck.setRotation(camB); }
   $('guide').classList.remove('empty', 'calc'); $('eta').classList.remove('hidden'); stepKey = null;
   drawRouteAnimated();
   updatePanels(0);
@@ -1178,22 +1181,25 @@ async function reroute(p) {
   rerouting = false; offSince = 0; renderAlerts();
 }
 
-// Il percorso "si disegna" dall'inizio alla fine
-let drawRaf, drawing = false;
-// Tratto di percorso tra due distanze (serve per l'animazione e per cancellare la parte già fatta)
-function routeSlice(d0, d1) {
-  const pts = [pointAt(d0)];
-  for (let i = 0; i < route.coords.length; i++) if (route.cum[i] > d0 && route.cum[i] < d1) pts.push(route.coords[i]);
-  pts.push(pointAt(d1));
-  return { type: 'Feature', geometry: { type: 'LineString', coordinates: pts } };
+// Il percorso è caricato una volta sola: la parte visibile (da dove sei fino all'arrivo)
+// si regola con un gradiente sulla linea, molto più leggero che ridisegnarla a ogni frame
+let drawRaf, drawing = false, winKey = '';
+const CLEAR = 'rgba(0,0,0,0)';
+function setRouteWindow(f0, f1) {
+  f0 = Math.max(0, Math.min(1, f0)); if (f1 >= 0.9999) f1 = 1.0001; f1 = Math.max(f0 + 1e-5, Math.min(1.0001, f1));
+  const key = f0.toFixed(4) + '|' + f1.toFixed(4);
+  if (key === winKey || !map.getLayer('route-line')) return;
+  winKey = key;
+  map.setPaintProperty('route-line', 'line-gradient', ['step', ['line-progress'], CLEAR, f0, '#ff8ee0', f1, CLEAR]);
+  map.setPaintProperty('route-core', 'line-gradient', ['step', ['line-progress'], CLEAR, f0, '#ffc6f0', f1, CLEAR]);
 }
 function drawRouteAnimated() {
   cancelAnimationFrame(drawRaf); drawing = true;
   const rt = route, t0 = performance.now(), dur = Math.min(1600, 700 + rt.total / 10);
   const f = t => {
     if (rt !== route) { drawing = false; return; }
-    const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3), from = nav.d;
-    map.getSource('route').setData(routeSlice(from, from + (rt.total - from) * e));
+    const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3), f0 = nav.d / rt.total;
+    setRouteWindow(f0, f0 + (1 - f0) * e);
     if (k < 1) drawRaf = requestAnimationFrame(f); else drawing = false;
   };
   drawRaf = requestAnimationFrame(f);
@@ -1310,10 +1316,9 @@ function updateLimit(p) {
   }
 }
 function updateSpeed() {
-  $('limit').textContent = limit;
+  setText('limit', limit);
   $('limit').classList.toggle('est', limitEstimated);
-  $('limit').title = limitEstimated ? 'Limite stimato dal tipo di strada' : 'Limite da OpenStreetMap';
-  $('curVal').textContent = Math.round(nav.kmh);
+  setText('curVal', Math.round(nav.kmh));
   const over = nav.mode && nav.kmh > limit + 2;
   $('cur').classList.toggle('over', !!over);
   $('overGlow').classList.toggle('on', !!over);
@@ -1356,7 +1361,7 @@ function setDistance(m) {
   else if (m < 1000) { num = String(m < 100 ? Math.round(m / 5) * 5 : Math.round(m / 10) * 10); unit = 'm'; }
   else { num = (m / 1000).toFixed(m < 10000 ? 1 : 0).replace('.', ','); unit = 'km'; }
   if ($('distNum').textContent !== num) $('distNum').textContent = num;
-  $('distUnit').textContent = unit;
+  setText('distUnit', unit);
 }
 function updatePanels(d) {
   if (!route) return;
@@ -1369,13 +1374,14 @@ function updatePanels(d) {
   setDistance(toMan);
   const prevStart = idx > 0 ? route.steps[idx - 1].startDist : 0;
   const win = Math.min(500, Math.max(50, next.startDist - prevStart));
-  $('gProg').firstElementChild.style.width = (Math.max(0, Math.min(1, 1 - toMan / win)) * 100).toFixed(1) + '%';
+  const w = (Math.max(0, Math.min(1, 1 - toMan / win)) * 100).toFixed(0) + '%', bar = $('gProg').firstElementChild;
+  if (bar.style.width !== w) bar.style.width = w;
   $('guide').classList.toggle('now', !!nav.mode && toMan < 60 && next.step.maneuver.type !== 'depart');
   const remaining = Math.max(0, route.total - d);
   const secs = route.duration * (remaining / route.total);
-  $('etaTime').textContent = fmtTime(new Date(Date.now() + secs * 1000));
-  $('etaMin').textContent = Math.max(0, Math.round(secs / 60));
-  $('etaKm').textContent = (remaining / 1000).toFixed(remaining < 10000 ? 1 : 0).replace('.', ',');
+  setText('etaTime', fmtTime(new Date(Date.now() + secs * 1000)));
+  setText('etaMin', Math.max(0, Math.round(secs / 60)));
+  setText('etaKm', (remaining / 1000).toFixed(remaining < 10000 ? 1 : 0).replace('.', ','));
 }
 
 function renderAlerts() {
@@ -1404,31 +1410,40 @@ function renderAlerts() {
     if (box.children[i] !== el) box.insertBefore(el, box.children[i] || null);
     const tx = el.querySelector('.tx'); if (tx.innerHTML !== a.html) tx.innerHTML = a.html;
   });
-  const g = $('guide');
-  box.style.top = (g.offsetTop + g.offsetHeight + 10) + 'px';
 }
+// gli avvisi stanno sempre sotto il riquadro: si riposizionano solo quando il riquadro cambia altezza
+function placeAlerts() { const g = $('guide'); $('alerts').style.top = (g.offsetTop + g.offsetHeight + 10) + 'px'; }
+if (window.ResizeObserver) new ResizeObserver(placeAlerts).observe($('guide')); else setInterval(placeAlerts, 500);
 
+let camB = 0, lastPosT = 0;
 function onPosition(p, b, kmh) {
   here = p; nav.kmh = kmh;
-  puck.setLngLat(p).setRotation(b);
+  // la direzione gira in modo morbido, senza scatti alle curve
+  const now = performance.now(), dt = lastPosT ? Math.min(0.2, (now - lastPosT) / 1000) : 0.016; lastPosT = now;
+  const diff = ((b - camB + 540) % 360) - 180;
+  camB = (camB + diff * (1 - Math.exp(-dt * 6)) + 360) % 360;
+  puck.setLngLat(p).setRotation(camB);
   if (!route) return;
   const pr = project(p, nav.idx - 3, nav.idx + 400);
   const pf = pr.off > 35 ? project(p) : pr; // se sembra fuori, cerca su tutto il percorso
   if (pf.off > 35) {
-    if (!offSince) offSince = performance.now();
-    if (performance.now() - offSince > 1500) reroute(p);
+    if (!offSince) offSince = now;
+    if (now - offSince > 1500) reroute(p);
   } else {
     offSince = 0;
     nav.d = pf.d; nav.idx = pf.idx;
   }
   updateLimit(p); updateSpeed(); updatePanels(nav.d); renderAlerts();
   // la riga dietro di te sparisce man mano che vai avanti
-  if (!drawing) map.getSource('route').setData(routeSlice(nav.d, route.total));
-  if (!nav.overview) {
-    const cam = { center: p, bearing: b, zoom: NAV_ZOOM, pitch: NAV_PITCH, padding: { top: map.getContainer().clientHeight * 0.45, bottom: 0, left: 0, right: 0 } };
-    if (nav.mode === 'gps') map.easeTo({ ...cam, duration: 900 }); else map.jumpTo(cam);
-  }
+  if (!drawing) setRouteWindow(nav.d / route.total, 1.0001);
+  if (!nav.overview) map.jumpTo({ center: p, bearing: camB, zoom: NAV_ZOOM, pitch: NAV_PITCH, padding: camPadding() });
   if (route.total - nav.d < 15 && !rerouting && pf.off < 35) arrive();
+}
+let padCache = null, padH = 0;
+function camPadding() {
+  const h = map.getContainer().clientHeight;
+  if (h !== padH) { padH = h; padCache = { top: h * 0.45, bottom: 0, left: 0, right: 0 }; }
+  return padCache;
 }
 
 // --- Simulazione ---
@@ -1437,8 +1452,13 @@ const PLAYBACK = 4;
 function simFrame(t) {
   if (!sim.on || nav.mode !== 'sim') return;
   const dt = sim.last ? Math.min(0.1, (t - sim.last) / 1000) : 0; sim.last = t;
-  const target = limit * (0.85 + 0.25 * (0.5 + 0.5 * Math.sin(t / 2500)));
-  const kmh = nav.kmh + (target - nav.kmh) * Math.min(1, dt * 0.8);
+  let target = limit * (0.85 + 0.25 * (0.5 + 0.5 * Math.sin(t / 2500)));
+  const ns = route.steps.find(s => s.startDist > nav.d + 1);
+  if (ns && !/arrive|depart/.test(ns.step.maneuver.type) && (ns.step.maneuver.modifier || '') !== 'straight') {
+    const toMan = ns.startDist - nav.d;
+    if (toMan < 90) target = Math.min(target, 22 + toMan * 0.35); // rallenta prima della svolta
+  }
+  const kmh = nav.kmh + (target - nav.kmh) * Math.min(1, dt * (target < nav.kmh ? 1.6 : 0.7));
   const step = (kmh / 3.6) * PLAYBACK * dt;
   let p, b;
   if (sim.detour) {
@@ -1461,23 +1481,34 @@ function wrongTurn() {
 }
 
 // --- GPS reale ---
-let watchId = null, lastFix = null, lastB = 0;
+// Il GPS dà una posizione circa ogni secondo: tra una e l'altra la freccia scorre in modo continuo
+let watchId = null, lastFix = null, lastB = 0, gpsAnim = null, gpsRaf;
+function gpsFrame() {
+  if (nav.mode !== 'gps' || !gpsAnim) return;
+  const g = gpsAnim, k = Math.min(1, (performance.now() - g.t0) / g.dur);
+  const p = [g.from[0] + (g.to[0] - g.from[0]) * k, g.from[1] + (g.to[1] - g.from[1]) * k];
+  onPosition(p, g.b, g.kmh);
+  gpsRaf = requestAnimationFrame(gpsFrame);
+}
 function startGps() {
   if (!navigator.geolocation) { toast('Posizione non disponibile su questo dispositivo'); return; }
   nav.mode = 'gps'; nav.startTime = Date.now(); nav.overview = false; renderControls(); drawRouteAnimated();
   watchId = navigator.geolocation.watchPosition(pos => {
     const p = [pos.coords.longitude, pos.coords.latitude];
     let kmh = pos.coords.speed != null && pos.coords.speed >= 0 ? pos.coords.speed * 3.6 : 0;
-    let b = pos.coords.heading;
+    let b = pos.coords.heading, interval = 1000;
     if (lastFix) {
       const dd = dist(lastFix.p, p), dt = (pos.timestamp - lastFix.t) / 1000;
+      interval = Math.max(300, Math.min(1600, dt * 1000));
       if (pos.coords.speed == null && dt > 0) kmh = dd / dt * 3.6;
       if ((b == null || isNaN(b)) && dd > 3) b = bearing(lastFix.p, p);
     }
-    if (b == null || isNaN(b)) b = lastB; lastB = b;
+    if (b == null || isNaN(b) || kmh < 3) b = lastB; lastB = b;
     lastFix = { p, t: pos.timestamp };
-    onPosition(p, b, kmh);
-  }, err => { toast('Non riesco a leggere il GPS: ' + err.message); stopNav(); }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 });
+    const first = !gpsAnim;
+    gpsAnim = { from: first ? p : here, to: p, t0: performance.now(), dur: first ? 1 : interval, b, kmh };
+    if (first) { cancelAnimationFrame(gpsRaf); gpsRaf = requestAnimationFrame(gpsFrame); }
+  }, err => { toast('Non riesco a leggere il GPS: ' + err.message); stopNav(); }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
 }
 
 function startSim() {
@@ -1493,9 +1524,10 @@ function pauseSim() { sim.on = false; nav.kmh = 0; updateSpeed(); renderControls
 function stopNav() {
   sim.on = false; sim.detour = null; sim.travelled = 0;
   if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; lastFix = null; }
+  cancelAnimationFrame(gpsRaf); gpsAnim = null;
   nav.mode = null; nav.kmh = 0; nav.overview = false;
   updateSpeed(); renderControls();
-  if (route) { nav.d = 0; nav.idx = 0; map.getSource('route').setData(routeSlice(0, route.total)); updatePanels(0); }
+  if (route) { nav.d = 0; nav.idx = 0; setRouteWindow(0, 1.0001); updatePanels(0); }
 }
 function arrive() {
   const mins = nav.mode === 'sim' ? Math.round(route.duration / 60) : Math.round((Date.now() - nav.startTime) / 60000);
@@ -1505,6 +1537,7 @@ function arrive() {
   $('arrKm').textContent = (route.total / 1000).toFixed(1).replace('.', ',');
   sim.on = false;
   if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+  cancelAnimationFrame(gpsRaf); gpsAnim = null;
   nav.mode = null; nav.kmh = 0; updateSpeed(); renderControls();
   $('arrive').classList.remove('hidden');
 }
@@ -1748,7 +1781,7 @@ setInterval(() => { if (modePref === 'auto') applyMode(); }, 60000);
 $('btnMode').innerHTML = MODE_ICONS[modePref];
 
 map.on('load', () => {
-  map.addSource('route', { type: 'geojson', data: emptyFC });
+  map.addSource('route', { type: 'geojson', data: emptyFC, lineMetrics: true });
   map.addSource('route-done', { type: 'geojson', data: emptyFC });
   map.addSource('cams', { type: 'geojson', data: emptyFC });
   map.addSource('ztl', { type: 'geojson', data: emptyFC });
