@@ -96,6 +96,12 @@ function show(view, { push = true, sheet } = {}) {
   if (push && S.view !== view) S.stack.push(S.view);
   S.view = view;
   VIEWS.forEach(v => $('v-' + v).classList.toggle('hidden', v !== view));
+  const searching = view === 'search';
+  $('searchBar').classList.toggle('hidden', view !== 'home' && !searching);
+  $('sBack').classList.toggle('hidden', !searching);
+  $('btnSettings').classList.toggle('hidden', searching);
+  if (!searching && document.activeElement === $('q')) $('q').blur();
+  if (view === 'home') { $('q').value = ''; $('qClear').classList.add('hidden'); }
   $('views').scrollTop = 0;
   setSheet(sheet || DEFAULT_SHEET[view]);
 }
@@ -115,7 +121,8 @@ function goHome() {
 }
 document.querySelectorAll('[data-back]').forEach(b => b.onclick = back);
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { if (S.view === 'dir') goHome(); else back(); });
-document.querySelectorAll('.view-head, #v-home .search-row').forEach(el => el.classList.add('drag-zone'));
+document.querySelectorAll('.view-head, #searchBar').forEach(el => el.classList.add('drag-zone'));
+$('sBack').onclick = back;
 
 // ---------- Home ----------
 function renderHome() {
@@ -156,13 +163,17 @@ function addRecent(pl) {
 
 // ---------- Ricerca ----------
 let searchT, searchSeq = 0;
-$('homeSearch').onclick = () => openSearch();
+// Tocchi la barra in Home: si passa alla ricerca tenendo la stessa casella (la tastiera resta aperta)
+$('q').addEventListener('focus', () => {
+  if (S.view === 'home') { show('search', { sheet: 'full' }); $('qHint').classList.add('hidden'); renderSearchSuggestions(); }
+  else if (S.view === 'search') setSheet('full');
+});
 function openSearch(hint) {
   show('search', { sheet: 'full' });
   $('q').value = ''; $('qClear').classList.add('hidden');
   $('qHint').textContent = hint || ''; $('qHint').classList.toggle('hidden', !hint);
   renderSearchSuggestions();
-  setTimeout(() => $('q').focus(), 60);
+  $('q').focus();
 }
 function startPick(target) {
   S.pick = target;
@@ -203,9 +214,13 @@ function choose(pl) {
 }
 $('q').addEventListener('input', e => {
   const v = e.target.value; $('qClear').classList.toggle('hidden', !v);
-  clearTimeout(searchT); searchT = setTimeout(() => runSearch(v), 280);
+  clearTimeout(searchT); searchT = setTimeout(() => runSearch(v), 220);
 });
-$('q').addEventListener('keydown', e => { if (e.key === 'Enter') { clearTimeout(searchT); runSearch(e.target.value); e.target.blur(); } });
+$('q').addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault(); clearTimeout(searchT);
+  runSearch(e.target.value, { submit: true }).then(() => { $('q').blur(); setSheet('half'); });
+});
 $('qClear').onclick = () => { $('q').value = ''; $('qClear').classList.add('hidden'); renderSearchSuggestions(); $('q').focus(); };
 
 function photonPlace(f) {
@@ -215,19 +230,66 @@ function photonPlace(f) {
   const sub = [label !== 'Luogo' && label !== 'Indirizzo' ? label : '', pr.name ? street : '', pr.city || pr.county || pr.state, pr.country && !/^Itali/.test(pr.country) ? pr.country : ''].filter(Boolean).join(' · ');
   return { p: f.geometry.coordinates, name, sub, kind: e, osm: pr.osm_id ? { type: { N: 'node', W: 'way', R: 'relation' }[pr.osm_type], id: pr.osm_id } : null };
 }
-async function runSearch(text) {
-  const seq = ++searchSeq;
-  if (text.trim().length < 2) { renderSearchSuggestions(); return; }
-  $('sResults').innerHTML = '<div class="empty-note">Cerco…</div>';
+// Abbreviazioni italiane comuni negli indirizzi
+const ABBR = [[/^v\.?le\b\.?/i, 'Viale'], [/^c\.?so\b\.?/i, 'Corso'], [/^p\.?zz?a\b\.?/i, 'Piazza'], [/^p\.?le\b\.?/i, 'Piazzale'], [/^l\.?go\b\.?/i, 'Largo'], [/^v\.\s*/i, 'Via '], [/^v\s+/i, 'Via ']];
+function normQuery(t) {
+  t = t.trim().replace(/\s+/g, ' ');
+  for (const [re, rp] of ABBR) if (re.test(t)) { t = t.replace(re, rp + ' ').replace(/\s+/g, ' ').trim(); break; }
+  return t;
+}
+// Parole che suggeriscono la ricerca per categoria
+const CAT_WORDS = { food: /ristorant|mangiar|pizzeri|trattori|osteri|sushi/i, cafe: /\bbar\b|caff|colazion/i, night: /discotec|locali\b|club|\bpub\b/i, fuel: /benzin|carburant|distribut|diesel|gasolio/i,
+  ev: /ricaric|colonnin|tesla|supercharg/i, parking: /parcheg|posteggi/i, super: /supermerc|spesa|alimentar/i, pharma: /farmaci/i, atm: /bancomat|\batm\b|prelev/i, hotel: /hotel|albergo|b&b|dormire/i, station: /stazion|treno/i };
+function placeKey(p) { return p.osm ? p.osm.type + p.osm.id : p.name + p.p.map(v => v.toFixed(4)).join(); }
+
+async function photonSearch(q, bias, bbox) {
+  let u = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lang=it&limit=10&lat=${bias[1]}&lon=${bias[0]}`;
+  if (bbox) u += `&bbox=${bbox.join(',')}`;
+  const r = await getJSON(u, {}, 8000);
+  return (r.features || []).map(photonPlace);
+}
+// Riserva quando Photon non trova niente (solo premendo Cerca, come chiede Nominatim)
+async function nominatimSearch(q, bias) {
+  const vb = [bias[0] - 0.6, bias[1] + 0.4, bias[0] + 0.6, bias[1] - 0.4].join(',');
+  const r = await getJSON(`https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=8&accept-language=it&viewbox=${vb}&q=${encodeURIComponent(q)}`, {}, 10000);
+  return r.map(x => {
+    const a = x.address || {}, street = [a.road || a.pedestrian, a.house_number].filter(Boolean).join(' ');
+    const [e, label] = kindOf(x.type, x.addresstype);
+    const name = x.name || street || x.display_name.split(',')[0];
+    return { p: [+x.lon, +x.lat], name, sub: [label !== 'Luogo' ? label : '', x.name ? street : '', a.city || a.town || a.village].filter(Boolean).join(' · '), kind: e, osm: { type: x.osm_type, id: x.osm_id } };
+  });
+}
+function renderResults(list, sugg = []) {
+  $('sResults').innerHTML = sugg.join('') + list.map((p, i) => rowHTML(p, i, 's')).join('');
+  bindResultRows($('sResults'));
+}
+async function runSearch(text, { submit = false } = {}) {
+  const seq = ++searchSeq, raw = text.trim();
+  if (raw.length < 2) { renderSearchSuggestions(); return; }
+  const cm = raw.match(/^(-?\d{1,2}(?:\.\d+)?)\s*[,; ]\s*(-?\d{1,3}(?:\.\d+)?)$/);
+  if (cm) { S.results = [{ p: [+cm[2], +cm[1]], name: `${cm[1]}, ${cm[2]}`, sub: 'Coordinate', kind: '📍' }]; renderResults(S.results); return; }
+  const q = normQuery(raw);
+  const sugg = Object.entries(CAT_WORDS).filter(([, re]) => re.test(raw)).slice(0, 2).map(([id]) => {
+    const c = CATS.find(x => x.id === id);
+    return `<div class="row sug" data-c="${id}"><div class="ic">${c.e}</div><div class="tx"><b>${c.name} qui intorno</b><small>Mostra sulla mappa</small></div></div>`;
+  });
+  if (!$('sResults').querySelector('[data-s]')) { $('sResults').innerHTML = sugg.join('') + '<div class="empty-note">Cerco…</div>'; bindResultRows($('sResults')); }
   const c = map.getCenter(), bias = me.p || [c.lng, c.lat];
-  try {
-    const r = await getJSON(`https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&lang=it&limit=12&lat=${bias[1]}&lon=${bias[0]}`);
-    if (seq !== searchSeq) return;
-    S.results = (r.features || []).map(photonPlace);
-    if (!S.results.length) { $('sResults').innerHTML = '<div class="empty-note">Nessun risultato. Prova a scrivere anche la città.</div>'; return; }
-    $('sResults').innerHTML = S.results.map((p, i) => rowHTML(p, i, 's')).join('');
-    bindResultRows($('sResults'));
-  } catch (e) { if (seq === searchSeq) $('sResults').innerHTML = '<div class="empty-note">Ricerca non disponibile, riprova tra poco.</div>'; }
+  const local = [bias[0] - 0.35, bias[1] - 0.25, bias[0] + 0.35, bias[1] + 0.25]; // circa 50 km attorno a te
+  const [near, all] = await Promise.allSettled([photonSearch(q, bias, local), photonSearch(q, bias)]);
+  if (seq !== searchSeq) return;
+  // prima i risultati della tua zona, poi il resto d'Italia e del mondo
+  const seen = new Set(), list = [];
+  for (const r of [near, all]) if (r.status === 'fulfilled') for (const p of r.value) { const k = placeKey(p); if (!seen.has(k)) { seen.add(k); list.push(p); } }
+  let res = list;
+  if (!res.length && submit) { try { res = await nominatimSearch(q, bias); } catch (e) {} if (seq !== searchSeq) return; }
+  S.results = res.slice(0, 15);
+  if (!S.results.length) {
+    const failed = near.status === 'rejected' && all.status === 'rejected';
+    $('sResults').innerHTML = sugg.join('') + `<div class="empty-note">${failed ? 'Ricerca non disponibile, controlla la connessione.' : (submit ? 'Nessun risultato. Prova ad aggiungere la città, es. "Via Roma 10, Torino".' : 'Nessun risultato: premi Cerca sulla tastiera per una ricerca più ampia.')}</div>`;
+    bindResultRows($('sResults')); return;
+  }
+  renderResults(S.results, sugg);
 }
 
 async function searchCategory(cat) {

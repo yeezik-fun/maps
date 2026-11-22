@@ -33,13 +33,18 @@
 <div id="panel">
   <div id="grab"><i></i></div>
   <div id="views">
+    <div id="searchBar" class="search-row">
+      <button class="round-btn back hidden" id="sBack" title="Indietro">‹</button>
+      <div class="input-wrap">
+        <svg class="mag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>
+        <input id="q" type="search" placeholder="Cerca vie, indirizzi e luoghi" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+        <button id="qClear" class="x-btn hidden" type="button">✕</button>
+      </div>
+      <button class="round-btn" id="btnSettings" title="Impostazioni"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.3"/><circle cx="8" cy="17" r="2.3"/></svg></button>
+    </div>
 
     <!-- Home -->
     <section id="v-home" class="view">
-      <div class="search-row">
-        <button id="homeSearch" class="fake-input"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg><span>Cerca luoghi e indirizzi</span></button>
-        <button class="round-btn" id="btnSettings" title="Impostazioni"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.3"/><circle cx="8" cy="17" r="2.3"/></svg></button>
-      </div>
       <div id="cats" class="chips scroll-x"></div>
       <div id="installHint" class="hint-card hidden">
         <b>Installa Yeezik Maps sull'iPhone</b>
@@ -54,10 +59,6 @@
 
     <!-- Ricerca -->
     <section id="v-search" class="view hidden">
-      <div class="search-row">
-        <button class="round-btn back" data-back title="Indietro">‹</button>
-        <div class="input-wrap"><input id="q" placeholder="Cerca luoghi e indirizzi" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"><button id="qClear" class="x-btn hidden">✕</button></div>
-      </div>
       <div id="qHint" class="muted hidden"></div>
       <div id="sResults" class="list"></div>
     </section>

@@ -54,7 +54,11 @@ input, select { font-family: inherit; }
 .fake-input, .input-wrap input { flex: 1; display: flex; align-items: center; gap: 10px; text-align: left; background: var(--field); border: 1px solid var(--field-b); border-radius: 14px; padding: 13px 14px; font-size: 17px; font-weight: 500; color: var(--muted); }
 .fake-input svg { width: 19px; height: 19px; flex: none; }
 .input-wrap { flex: 1; position: relative; display: flex; }
-.input-wrap input { color: #fff; outline: none; width: 100%; padding-right: 40px; }
+.input-wrap input { color: #fff; outline: none; width: 100%; padding-left: 40px; padding-right: 40px; -webkit-appearance: none; appearance: none; }
+.input-wrap input::-webkit-search-cancel-button { display: none; }
+.input-wrap .mag { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--muted); pointer-events: none; }
+#searchBar { position: sticky; top: 0; z-index: 2; background: var(--panel); padding: 2px 0 4px; margin: 0 -2px; }
+.row.sug .ic { background: linear-gradient(135deg, #ff8ee0, #9b5cff); }
 .input-wrap input:focus { border-color: var(--pink); }
 .input-wrap .x-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); }
 .round-btn { width: 44px; height: 44px; flex: none; padding: 0; border-radius: 50%; display: grid; place-items: center; font-size: 17px; }
