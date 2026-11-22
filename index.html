@@ -903,15 +903,13 @@ map.on('load', () => {
   map.addSource('route-done', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
   // Il percorso sta sotto gli edifici 3D? No: lo mettiamo sopra le strade ma sotto le etichette
   const before = 'building-3d';
-  map.addLayer({ id: 'route-glow', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#ffd3f3', 'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 6, 18, 30] } }, before);
   map.addLayer({ id: 'route-line', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: { 'line-color': '#ff8ee0', 'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 4.5, 18, 26] } }, before);
   map.addLayer({ id: 'route-core', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#ffc6f0', 'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 1.2, 18, 8] } }, before);
+    paint: { 'line-color': '#ffc6f0', 'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 2.7, 18, 15.6] } }, before);
   // Il tratto già percorso sparisce: torna del colore della strada
   map.addLayer({ id: 'route-done-line', type: 'line', source: 'route-done', layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#7c79bf', 'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 6.5, 18, 31] } }, before);
+    paint: { 'line-color': '#7c79bf', 'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 12, 5, 18, 27] } }, before);
   loadRoute();
 });
 </script>
