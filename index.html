@@ -16,6 +16,14 @@
 <link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet">
 <link href="css/app.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<script type="importmap">
+{ "imports": {
+  "react": "https://esm.sh/react@18.3.1",
+  "react-dom/client": "https://esm.sh/react-dom@18.3.1/client?external=react",
+  "lucide-react": "https://esm.sh/lucide-react@0.460.0?external=react",
+  "lucide": "https://esm.sh/lucide@0.460.0"
+} }
+</script>
 </head>
 <body>
 <div id="map"></div>
@@ -34,12 +42,12 @@
   <div id="grab"><i></i></div>
   <div id="views">
     <div id="searchBar" class="search-row">
-      <button class="round-btn back hidden" id="sBack" title="Indietro">‹</button>
       <div class="input-wrap">
         <svg class="mag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>
         <input id="q" type="search" placeholder="Cerca vie, indirizzi e luoghi" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
         <button id="qClear" class="x-btn hidden" type="button">✕</button>
       </div>
+      <button id="sCancel" class="hidden" type="button">Annulla</button>
       <button class="round-btn" id="btnSettings" title="Impostazioni"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.3"/><circle cx="8" cy="17" r="2.3"/></svg></button>
     </div>
 
@@ -193,5 +201,6 @@
 <script src="js/nav.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>
+<script type="module" src="js/search-ui.js"></script>
 </body>
 </html>

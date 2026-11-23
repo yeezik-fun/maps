@@ -7,22 +7,30 @@ const S = {
   tt: { type: 'now', value: '' }, pick: null, results: [], cat: null, dirToken: 0
 };
 let favs = store.get('yz-favs', []), recents = store.get('yz-recents', []);
+// Icone (Lucide) per le parti dell'interfaccia senza React; arrivano col modulo della ricerca
+const ic = (name, size = 18) => window.YZIcon ? window.YZIcon(name, size) : '';
+window.addEventListener('yz-ui-ready', () => {
+  $('pShare').querySelector('span').innerHTML = ic('Share', 19);
+  $('pGo').querySelector('svg').outerHTML = ic('Navigation', 19);
+  updateSaveBtn(); renderHome();
+  if (S.view === 'search') { if (lastModel) renderSearch(lastModel); else renderSearchSuggestions(); }
+});
 
 // ---------- Tipi di luogo ----------
 const KIND = {
-  restaurant: ['🍽️', 'Ristorante'], fast_food: ['🍔', 'Fast food'], cafe: ['☕', 'Bar'], bar: ['🍸', 'Bar'], pub: ['🍺', 'Pub'], nightclub: ['🎧', 'Discoteca'],
-  ice_cream: ['🍦', 'Gelateria'], fuel: ['⛽', 'Distributore'], charging_station: ['🔌', 'Ricarica auto'], parking: ['🅿️', 'Parcheggio'], pharmacy: ['💊', 'Farmacia'],
-  hospital: ['🏥', 'Ospedale'], clinic: ['🏥', 'Clinica'], doctors: ['🩺', 'Medico'], dentist: ['🦷', 'Dentista'], bank: ['🏦', 'Banca'], atm: ['🏧', 'Bancomat'],
-  supermarket: ['🛒', 'Supermercato'], convenience: ['🛒', 'Minimarket'], bakery: ['🥐', 'Panetteria'], clothes: ['👕', 'Abbigliamento'], shoes: ['👟', 'Scarpe'],
-  hairdresser: ['💇', 'Parrucchiere'], hotel: ['🏨', 'Hotel'], guest_house: ['🏨', 'B&B'], hostel: ['🏨', 'Ostello'], apartment: ['🏨', 'Appartamento'],
-  station: ['🚆', 'Stazione'], halt: ['🚆', 'Stazione'], subway_entrance: ['🚇', 'Metro'], bus_stop: ['🚏', 'Fermata bus'], tram_stop: ['🚋', 'Fermata tram'], aerodrome: ['✈️', 'Aeroporto'],
-  school: ['🏫', 'Scuola'], university: ['🎓', 'Università'], museum: ['🏛️', 'Museo'], attraction: ['📸', 'Attrazione'], viewpoint: ['🌄', 'Panorama'], park: ['🌳', 'Parco'], garden: ['🌳', 'Giardino'],
-  cinema: ['🎬', 'Cinema'], theatre: ['🎭', 'Teatro'], place_of_worship: ['⛪', 'Luogo di culto'], police: ['👮', 'Polizia'], post_office: ['📮', 'Poste'],
-  fitness_centre: ['🏋️', 'Palestra'], sports_centre: ['🏟️', 'Centro sportivo'], stadium: ['🏟️', 'Stadio'], marketplace: ['🧺', 'Mercato'], mall: ['🛍️', 'Centro commerciale'],
-  city: ['🏙️', 'Città'], town: ['🏘️', 'Paese'], village: ['🏘️', 'Paese'], suburb: ['🏘️', 'Quartiere'], quarter: ['🏘️', 'Quartiere'], neighbourhood: ['🏘️', 'Quartiere'],
-  house: ['🏠', 'Indirizzo'], street: ['🛣️', 'Via'], road: ['🛣️', 'Via'], residential: ['🛣️', 'Via'], primary: ['🛣️', 'Via'], secondary: ['🛣️', 'Via'], tertiary: ['🛣️', 'Via'], pedestrian: ['🚶', 'Zona pedonale']
+  restaurant: ['Utensils', 'Ristorante'], fast_food: ['Sandwich', 'Fast food'], cafe: ['Coffee', 'Bar'], bar: ['Martini', 'Bar'], pub: ['Beer', 'Pub'], nightclub: ['Music', 'Discoteca'],
+  ice_cream: ['IceCreamCone', 'Gelateria'], fuel: ['Fuel', 'Distributore'], charging_station: ['PlugZap', 'Ricarica auto'], parking: ['SquareParking', 'Parcheggio'], pharmacy: ['Pill', 'Farmacia'],
+  hospital: ['Hospital', 'Ospedale'], clinic: ['Hospital', 'Clinica'], doctors: ['Stethoscope', 'Medico'], dentist: ['Stethoscope', 'Dentista'], bank: ['Landmark', 'Banca'], atm: ['Banknote', 'Bancomat'],
+  supermarket: ['ShoppingCart', 'Supermercato'], convenience: ['ShoppingCart', 'Minimarket'], bakery: ['Croissant', 'Panetteria'], clothes: ['Shirt', 'Abbigliamento'], shoes: ['Footprints', 'Scarpe'],
+  hairdresser: ['Scissors', 'Parrucchiere'], hotel: ['BedDouble', 'Hotel'], guest_house: ['BedDouble', 'B&B'], hostel: ['BedDouble', 'Ostello'], apartment: ['BedDouble', 'Appartamento'],
+  station: ['TrainFront', 'Stazione'], halt: ['TrainFront', 'Stazione'], subway_entrance: ['TramFront', 'Metro'], bus_stop: ['Bus', 'Fermata bus'], tram_stop: ['TramFront', 'Fermata tram'], aerodrome: ['Plane', 'Aeroporto'],
+  school: ['School', 'Scuola'], university: ['GraduationCap', 'Università'], museum: ['Landmark', 'Museo'], attraction: ['Camera', 'Attrazione'], viewpoint: ['Mountain', 'Panorama'], park: ['Trees', 'Parco'], garden: ['Trees', 'Giardino'],
+  cinema: ['Clapperboard', 'Cinema'], theatre: ['Drama', 'Teatro'], place_of_worship: ['Church', 'Luogo di culto'], police: ['ShieldCheck', 'Polizia'], post_office: ['Mail', 'Poste'],
+  fitness_centre: ['Dumbbell', 'Palestra'], sports_centre: ['Trophy', 'Centro sportivo'], stadium: ['Trophy', 'Stadio'], marketplace: ['ShoppingBasket', 'Mercato'], mall: ['ShoppingBag', 'Centro commerciale'],
+  city: ['Building2', 'Città'], town: ['Building', 'Paese'], village: ['Building', 'Paese'], suburb: ['Building', 'Quartiere'], quarter: ['Building', 'Quartiere'], neighbourhood: ['Building', 'Quartiere'],
+  house: ['House', 'Indirizzo'], street: ['Route', 'Via'], road: ['Route', 'Via'], residential: ['Route', 'Via'], primary: ['Route', 'Via'], secondary: ['Route', 'Via'], tertiary: ['Route', 'Via'], pedestrian: ['Footprints', 'Zona pedonale']
 };
-function kindOf(...vals) { for (const v of vals) if (v && KIND[v]) return KIND[v]; return ['📍', 'Luogo']; }
+function kindOf(...vals) { for (const v of vals) if (v && KIND[v]) return KIND[v]; return ['MapPin', 'Luogo']; }
 function kindFromTags(t = {}) { return kindOf(t.amenity, t.shop, t.tourism, t.railway, t.public_transport === 'station' ? 'station' : null, t.leisure, t.aeroway, t.highway, t.place, t.building === 'house' ? 'house' : null); }
 function addrFromTags(t = {}) {
   const st = [t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' ');
@@ -31,17 +39,17 @@ function addrFromTags(t = {}) {
 
 // ---------- Categorie ----------
 const CATS = [
-  { id: 'food', e: '🍽️', name: 'Ristoranti', q: 'nwr["amenity"="restaurant"]' },
-  { id: 'cafe', e: '☕', name: 'Bar e caffè', q: 'nwr["amenity"~"^(cafe|bar)$"]' },
-  { id: 'night', e: '🎧', name: 'Locali', q: 'nwr["amenity"~"^(nightclub|pub)$"]' },
-  { id: 'fuel', e: '⛽', name: 'Benzina', q: 'nwr["amenity"="fuel"]' },
-  { id: 'ev', e: '🔌', name: 'Ricarica', q: 'nwr["amenity"="charging_station"]' },
-  { id: 'parking', e: '🅿️', name: 'Parcheggi', q: 'nwr["amenity"="parking"]["access"!~"^(private|no|customers)$"]' },
-  { id: 'super', e: '🛒', name: 'Supermercati', q: 'nwr["shop"~"^(supermarket|convenience)$"]' },
-  { id: 'pharma', e: '💊', name: 'Farmacie', q: 'nwr["amenity"="pharmacy"]' },
-  { id: 'atm', e: '🏧', name: 'Bancomat', q: 'nwr["amenity"="atm"]' },
-  { id: 'hotel', e: '🏨', name: 'Hotel', q: 'nwr["tourism"~"^(hotel|guest_house|hostel)$"]' },
-  { id: 'station', e: '🚆', name: 'Stazioni', q: 'nwr["railway"~"^(station|halt)$"]' }
+  { id: 'food', e: 'Utensils', name: 'Ristoranti', q: 'nwr["amenity"="restaurant"]' },
+  { id: 'cafe', e: 'Coffee', name: 'Bar e caffè', q: 'nwr["amenity"~"^(cafe|bar)$"]' },
+  { id: 'night', e: 'Music', name: 'Locali', q: 'nwr["amenity"~"^(nightclub|pub)$"]' },
+  { id: 'fuel', e: 'Fuel', name: 'Benzina', q: 'nwr["amenity"="fuel"]' },
+  { id: 'ev', e: 'PlugZap', name: 'Ricarica', q: 'nwr["amenity"="charging_station"]' },
+  { id: 'parking', e: 'SquareParking', name: 'Parcheggi', q: 'nwr["amenity"="parking"]["access"!~"^(private|no|customers)$"]' },
+  { id: 'super', e: 'ShoppingCart', name: 'Supermercati', q: 'nwr["shop"~"^(supermarket|convenience)$"]' },
+  { id: 'pharma', e: 'Pill', name: 'Farmacie', q: 'nwr["amenity"="pharmacy"]' },
+  { id: 'atm', e: 'Banknote', name: 'Bancomat', q: 'nwr["amenity"="atm"]' },
+  { id: 'hotel', e: 'BedDouble', name: 'Hotel', q: 'nwr["tourism"~"^(hotel|guest_house|hostel)$"]' },
+  { id: 'station', e: 'TrainFront', name: 'Stazioni', q: 'nwr["railway"~"^(station|halt)$"]' }
 ];
 
 // ---------- Foglio in basso (iPhone) ----------
@@ -98,7 +106,7 @@ function show(view, { push = true, sheet } = {}) {
   VIEWS.forEach(v => $('v-' + v).classList.toggle('hidden', v !== view));
   const searching = view === 'search';
   $('searchBar').classList.toggle('hidden', view !== 'home' && !searching);
-  $('sBack').classList.toggle('hidden', !searching);
+  $('sCancel').classList.toggle('hidden', !searching);
   $('btnSettings').classList.toggle('hidden', searching);
   if (!searching && document.activeElement === $('q')) $('q').blur();
   if (view === 'home') { $('q').value = ''; $('qClear').classList.add('hidden'); }
@@ -122,19 +130,20 @@ function goHome() {
 document.querySelectorAll('[data-back]').forEach(b => b.onclick = back);
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { if (S.view === 'dir') goHome(); else back(); });
 document.querySelectorAll('.view-head, #searchBar').forEach(el => el.classList.add('drag-zone'));
-$('sBack').onclick = back;
+$('sCancel').onclick = back;
+$('q').addEventListener('keydown', e => { if (e.key === 'ArrowDown') { const v = document.querySelector('#sResults .animated-list__viewport'); if (v) { e.preventDefault(); v.focus(); } } });
 
 // ---------- Home ----------
 function renderHome() {
-  $('cats').innerHTML = CATS.map(c => `<button class="chip" data-cat="${c.id}"><span class="e">${c.e}</span>${c.name}</button>`).join('');
+  $('cats').innerHTML = CATS.map(c => `<button class="chip" data-cat="${c.id}">${ic(c.e, 16)}${c.name}</button>`).join('');
   $('cats').querySelectorAll('[data-cat]').forEach(b => b.onclick = () => searchCategory(CATS.find(c => c.id === b.dataset.cat)));
   const fv = $('homeFavs'), items = [];
-  [['casa', '🏠', 'Casa'], ['lavoro', '💼', 'Lavoro']].forEach(([t, e, n]) => {
+  [['casa', 'House', 'Casa'], ['lavoro', 'BriefcaseBusiness', 'Lavoro']].forEach(([t, e, n]) => {
     const f = favs.find(x => x.type === t);
-    items.push(`<div class="fav ${f ? 'set' : ''}" data-fav="${t}"><div class="ic">${e}</div><span>${n}</span><small>${f ? esc(etaLabel(f.p)) : 'Aggiungi'}</small></div>`);
+    items.push(`<div class="fav ${f ? 'set' : ''}" data-fav="${t}"><div class="ic">${ic(e, 22)}</div><span>${n}</span><small>${f ? esc(etaLabel(f.p)) : 'Aggiungi'}</small></div>`);
   });
-  favs.filter(f => f.type === 'fav').forEach((f, i) => items.push(`<div class="fav set" data-fi="${i}"><div class="ic">★</div><span>${esc(f.name)}</span><small>${esc(etaLabel(f.p))}</small></div>`));
-  items.push(`<div class="fav" data-add="1"><div class="ic">＋</div><span>Aggiungi</span></div>`);
+  favs.filter(f => f.type === 'fav').forEach((f, i) => items.push(`<div class="fav set" data-fi="${i}"><div class="ic">${ic('Star', 22)}</div><span>${esc(f.name)}</span><small>${esc(etaLabel(f.p))}</small></div>`));
+  items.push(`<div class="fav" data-add="1"><div class="ic">${ic('Plus', 22)}</div><span>Aggiungi</span></div>`);
   fv.innerHTML = items.join('');
   fv.querySelectorAll('[data-fav]').forEach(el => el.onclick = () => {
     const f = favs.find(x => x.type === el.dataset.fav);
@@ -153,11 +162,11 @@ function renderHome() {
 $('installClose').onclick = () => { store.set('yz-hint', true); $('installHint').classList.add('hidden'); };
 function etaLabel(p) { const o = me.p; if (!o) return ''; const d = dist(o, p); return d < 50 ? 'Sei qui' : fmtDist(d); }
 function rowHTML(r, i, key) {
-  const k = r.kind || '📍', d = me.p ? fmtDist(dist(me.p, r.p)) : '';
-  return `<div class="row" data-${key}="${i}"><div class="ic">${k}</div><div class="tx"><b>${esc(r.name)}</b><small>${esc(r.sub || '')}</small></div><div class="side">${d}</div></div>`;
+  const d = me.p ? fmtDist(dist(me.p, r.p)) : '';
+  return `<div class="row" data-${key}="${i}"><div class="ic">${ic(r.kind || 'Clock')}</div><div class="tx"><b>${esc(r.name)}</b><small>${esc(r.sub || '')}</small></div><div class="side">${d}</div></div>`;
 }
 function addRecent(pl) {
-  recents = [{ p: pl.p, name: pl.name, sub: pl.sub || '', kind: pl.kind || '📍', osm: pl.osm || null }, ...recents.filter(r => !(r.name === pl.name && dist(r.p, pl.p) < 30))].slice(0, 12);
+  recents = [{ p: pl.p, name: pl.name, sub: pl.sub || '', kind: pl.kind || 'MapPin', osm: pl.osm || null }, ...recents.filter(r => !(r.name === pl.name && dist(r.p, pl.p) < 30))].slice(0, 12);
   store.set('yz-recents', recents);
 }
 
@@ -180,21 +189,32 @@ function startPick(target) {
   const hints = { from: 'Scegli il punto di partenza', to: 'Scegli la destinazione', casa: "Cerca l'indirizzo di Casa", lavoro: "Cerca l'indirizzo di Lavoro", fav: 'Cerca il luogo da aggiungere ai preferiti' };
   openSearch(hints[target]);
 }
+// La lista dei risultati è disegnata dal modulo React (search-ui.js); qui si prepara solo il contenuto
+let lastModel = null;
+function renderSearch(model) {
+  lastModel = model;
+  if (window.YZSearch) { window.YZSearch.render(model); return; }
+  // riserva semplice se il modulo non è ancora pronto
+  const rows = model.sections.flatMap(sec => sec.items).map((it, i) => `<div class="row" data-k="${i}"><div class="tx"><b>${esc(it.title)}</b><small>${esc(it.description || '')}</small></div><div class="side">${esc(it.meta || '')}</div></div>`);
+  $('sResults').innerHTML = (model.loading ? '<div class="empty-note">Cerco…</div>' : '') + rows.join('') + (model.empty ? `<div class="empty-note">${esc(model.empty.title)}</div>` : '');
+  const all = model.sections.flatMap(sec => sec.items);
+  $('sResults').querySelectorAll('[data-k]').forEach(el => el.onclick = () => all[+el.dataset.k].onSelect());
+}
+const distMeta = p => me.p ? fmtDist(dist(me.p, p)) : '';
+const placeItem = (p, extra = {}) => ({ id: placeKey(p), icon: p.kind || 'MapPin', title: p.name, description: p.sub || '', meta: distMeta(p.p), highlight: true, onSelect: () => choose(p), ...extra });
+const catItem = (c, desc) => ({ id: 'cat-' + c.id, icon: c.e, title: c.name, description: desc, accent: true, action: true, onSelect: () => searchCategory(c) });
+function pickHint() {
+  return { from: 'Scegli il punto di partenza', to: 'Scegli la destinazione', casa: "Cerca l'indirizzo di Casa", lavoro: "Cerca l'indirizzo di Lavoro", fav: 'Cerca il luogo da aggiungere ai preferiti' }[S.pick] || '';
+}
 function renderSearchSuggestions() {
-  const rows = [];
-  if (S.pick === 'from' || S.pick === 'to') rows.push(`<div class="row" data-me="1"><div class="ic">📍</div><div class="tx"><b>La mia posizione</b><small>${me.p ? 'Usa la posizione attuale' : 'Consenti la posizione nel browser'}</small></div></div>`);
-  if (!S.pick) rows.push(...CATS.slice(0, 6).map(c => `<div class="row" data-c="${c.id}"><div class="ic">${c.e}</div><div class="tx"><b>${c.name}</b><small>Vicino a te</small></div></div>`));
-  rows.push(...recents.map((r, i) => rowHTML(r, i, 'r')));
-  $('sResults').innerHTML = rows.join('') || '<div class="empty-note">Scrivi un indirizzo, una via o il nome di un posto</div>';
-  bindResultRows($('sResults'));
+  const sections = [];
+  if (S.pick === 'from' || S.pick === 'to') sections.push({ title: 'Posizione', items: [{ id: 'me', icon: 'LocateFixed', accent: true, title: 'La mia posizione', description: me.p ? 'Usa la posizione attuale' : 'Consenti la posizione nel browser',
+    onSelect: () => { if (!me.p) { locateMe(); toast('Attendo la tua posizione…'); return; } choose({ p: me.p, name: 'La mia posizione', me: true }); } }] });
+  if (!S.pick) sections.push({ title: 'Cerca qui intorno', items: CATS.slice(0, 6).map(c => catItem(c, 'Vicino a te')) });
+  sections.push({ title: 'Recenti', items: recents.map(r => ({ ...placeItem(r), icon: 'Clock', highlight: false })) });
+  renderSearch({ query: '', hint: pickHint(), sections, empty: !recents.length && S.pick && S.pick !== 'from' && S.pick !== 'to' ? { icon: 'Search', title: 'Cerca una via, un indirizzo o un posto', text: 'Ad esempio "Corso Buenos Aires 12" o "Stazione Centrale"' } : null });
 }
-function bindResultRows(box) {
-  box.querySelectorAll('[data-r]').forEach(el => el.onclick = () => choose(recents[+el.dataset.r]));
-  box.querySelectorAll('[data-s]').forEach(el => el.onclick = () => choose(S.results[+el.dataset.s]));
-  box.querySelectorAll('[data-c]').forEach(el => el.onclick = () => searchCategory(CATS.find(c => c.id === el.dataset.c)));
-  const m = box.querySelector('[data-me]');
-  if (m) m.onclick = () => { if (!me.p) { locateMe(); toast('Attendo la tua posizione…'); return; } choose({ p: me.p, name: 'La mia posizione', me: true }); };
-}
+function bindResultRows() {}
 // Un risultato scelto: dipende da cosa stavamo facendo
 function choose(pl) {
   const pick = S.pick;
@@ -259,21 +279,16 @@ async function nominatimSearch(q, bias) {
     return { p: [+x.lon, +x.lat], name, sub: [label !== 'Luogo' ? label : '', x.name ? street : '', a.city || a.town || a.village].filter(Boolean).join(' · '), kind: e, osm: { type: x.osm_type, id: x.osm_id } };
   });
 }
-function renderResults(list, sugg = []) {
-  $('sResults').innerHTML = sugg.join('') + list.map((p, i) => rowHTML(p, i, 's')).join('');
-  bindResultRows($('sResults'));
-}
 async function runSearch(text, { submit = false } = {}) {
   const seq = ++searchSeq, raw = text.trim();
-  if (raw.length < 2) { renderSearchSuggestions(); return; }
+  if (raw.length < 2) { lastModel = null; renderSearchSuggestions(); return; }
   const cm = raw.match(/^(-?\d{1,2}(?:\.\d+)?)\s*[,; ]\s*(-?\d{1,3}(?:\.\d+)?)$/);
-  if (cm) { S.results = [{ p: [+cm[2], +cm[1]], name: `${cm[1]}, ${cm[2]}`, sub: 'Coordinate', kind: '📍' }]; renderResults(S.results); return; }
+  if (cm) { S.results = [{ p: [+cm[2], +cm[1]], name: `${cm[1]}, ${cm[2]}`, sub: 'Coordinate', kind: 'Crosshair' }]; renderSearch({ query: '', hint: pickHint(), sections: [{ title: 'Coordinate', items: S.results.map(p => placeItem(p, { highlight: false })) }] }); return; }
   const q = normQuery(raw);
-  const sugg = Object.entries(CAT_WORDS).filter(([, re]) => re.test(raw)).slice(0, 2).map(([id]) => {
-    const c = CATS.find(x => x.id === id);
-    return `<div class="row sug" data-c="${id}"><div class="ic">${c.e}</div><div class="tx"><b>${c.name} qui intorno</b><small>Mostra sulla mappa</small></div></div>`;
-  });
-  if (!$('sResults').querySelector('[data-s]')) { $('sResults').innerHTML = sugg.join('') + '<div class="empty-note">Cerco…</div>'; bindResultRows($('sResults')); }
+  const sugg = Object.entries(CAT_WORDS).filter(([, re]) => re.test(raw)).slice(0, 2).map(([id]) => catItem(CATS.find(x => x.id === id), 'Mostra sulla mappa qui intorno'));
+  const sec = items => [{ title: 'Suggerimenti', key: 'sugg', items: sugg }, { title: 'Risultati', key: 'res', items }];
+  const prevRes = lastModel && lastModel.query ? (lastModel.sections.find(x => x.key === 'res') || { items: [] }).items : [];
+  renderSearch({ query: raw, hint: pickHint(), sections: sec(prevRes), loading: !prevRes.length });
   const c = map.getCenter(), bias = me.p || [c.lng, c.lat];
   const local = [bias[0] - 0.35, bias[1] - 0.25, bias[0] + 0.35, bias[1] + 0.25]; // circa 50 km attorno a te
   const [near, all] = await Promise.allSettled([photonSearch(q, bias, local), photonSearch(q, bias)]);
@@ -286,17 +301,19 @@ async function runSearch(text, { submit = false } = {}) {
   S.results = res.slice(0, 15);
   if (!S.results.length) {
     const failed = near.status === 'rejected' && all.status === 'rejected';
-    $('sResults').innerHTML = sugg.join('') + `<div class="empty-note">${failed ? 'Ricerca non disponibile, controlla la connessione.' : (submit ? 'Nessun risultato. Prova ad aggiungere la città, es. "Via Roma 10, Torino".' : 'Nessun risultato: premi Cerca sulla tastiera per una ricerca più ampia.')}</div>`;
-    bindResultRows($('sResults')); return;
+    renderSearch({ query: raw, hint: pickHint(), sections: sec([]), empty: failed
+      ? { icon: 'WifiOff', title: 'Ricerca non disponibile', text: 'Controlla la connessione e riprova.' }
+      : { icon: 'SearchX', title: 'Nessun risultato', text: submit ? 'Prova ad aggiungere la città, ad esempio "Via Roma 10, Torino".' : 'Premi Cerca sulla tastiera per una ricerca più ampia.' } });
+    return;
   }
-  renderResults(S.results, sugg);
+  renderSearch({ query: raw, hint: pickHint(), sections: sec(S.results.map(p => placeItem(p))) });
 }
 
 async function searchCategory(cat) {
   if (!cat) return;
   if (S.view !== 'search') show('search', { sheet: 'half' }); else setSheet('half');
   $('q').value = cat.name; $('qClear').classList.remove('hidden'); $('qHint').classList.add('hidden'); $('q').blur();
-  $('sResults').innerHTML = `<div class="empty-note">Cerco ${cat.name.toLowerCase()} qui intorno…</div>`;
+  renderSearch({ query: '', sections: [], loading: true });
   const c = map.getCenter(), b = map.getBounds();
   const rMap = Math.min(dist([c.lng, c.lat], [b.getEast(), c.lat]), dist([c.lng, c.lat], [c.lng, b.getNorth()]));
   const r = Math.max(600, Math.min(4000, rMap * 1.1)), seq = ++searchSeq;
@@ -309,11 +326,10 @@ async function searchCategory(cat) {
       const [e, label] = kindFromTags(t);
       return { p, name: t.name || t.brand || label, sub: [t.name ? label : '', addrFromTags(t)].filter(Boolean).join(' · '), kind: e, tags: t, osm: { type: el.type, id: el.id } };
     }).sort((a, b) => dist(center, a.p) - dist(center, b.p)).slice(0, 50);
-    if (!S.results.length) { $('sResults').innerHTML = '<div class="empty-note">Niente qui intorno. Sposta o allarga la mappa e riprova.</div>'; map.getSource('results').setData(emptyFC); return; }
-    $('sResults').innerHTML = S.results.map((p, i) => rowHTML(p, i, 's')).join('');
-    bindResultRows($('sResults'));
+    if (!S.results.length) { renderSearch({ query: '', sections: [], empty: { icon: cat.e, title: `Nessun risultato per ${cat.name.toLowerCase()} qui`, text: 'Sposta o allarga la mappa e riprova.' } }); map.getSource('results').setData(emptyFC); return; }
+    renderSearch({ query: '', sections: [{ title: `${cat.name} · ${S.results.length}`, key: 'cat-' + cat.id, items: S.results.map(p => placeItem(p, { highlight: false })) }] });
     showResultsOnMap(S.results);
-  } catch (e) { if (seq === searchSeq) $('sResults').innerHTML = '<div class="empty-note">Ricerca non disponibile, riprova tra poco.</div>'; }
+  } catch (e) { if (seq === searchSeq) renderSearch({ query: '', sections: [], empty: { icon: 'WifiOff', title: 'Ricerca non disponibile', text: 'Riprova tra poco.' } }); }
 }
 function showResultsOnMap(list) {
   map.getSource('results').setData({ type: 'FeatureCollection', features: list.map((p, i) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: p.p }, properties: { i, name: p.name } })) });
@@ -374,7 +390,7 @@ function renderDetails(pl) {
   $('pDetails').innerHTML = rows.map(([k, v]) => `<div class="drow"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
 }
 function isSaved(pl) { return favs.some(f => f.type === 'fav' && dist(f.p, pl.p) < 25); }
-function updateSaveBtn() { const on = S.place && isSaved(S.place); $('pSave').classList.toggle('on', on); $('pSave').querySelector('span').textContent = on ? '★' : '☆'; }
+function updateSaveBtn() { const on = !!(S.place && isSaved(S.place)); $('pSave').classList.toggle('on', on); $('pSave').querySelector('span').innerHTML = ic('Star', 19) || (on ? '★' : '☆'); }
 $('pSave').onclick = () => {
   const pl = S.place; if (!pl) return;
   if (isSaved(pl)) { favs = favs.filter(f => !(f.type === 'fav' && dist(f.p, pl.p) < 25)); toast('Rimosso dai preferiti'); }
@@ -389,7 +405,7 @@ $('pShare').onclick = async () => {
 };
 $('pGo').onclick = () => S.place && openDirections(S.place);
 async function dropPin(lngLat) {
-  const p = [lngLat.lng, lngLat.lat], pl = { p, name: 'Punto selezionato', sub: '', kind: '📍', dropped: true };
+  const p = [lngLat.lng, lngLat.lat], pl = { p, name: 'Punto selezionato', sub: '', kind: 'MapPin', dropped: true };
   openPlace(pl, { fly: false });
   try {
     const r = await getJSON(`https://photon.komoot.io/reverse?lon=${p[0]}&lat=${p[1]}&lang=it`);
